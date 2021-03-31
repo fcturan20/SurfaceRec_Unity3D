@@ -70,7 +70,6 @@
     <ClCompile Include="Source\Editor\FileSystem\ResourceTypes\Model_Resource.cpp" />
     <ClCompile Include="Source\Editor\FileSystem\ResourceTypes\Resource_Identifier.cpp" />
     <ClCompile Include="Source\Editor\FileSystem\ResourceTypes\Scene_Resource.cpp" />
-    <ClCompile Include="Source\Editor\RenderContext\Compute Passes\FirstCompute.cpp" />
     <ClCompile Include="Source\Editor\RenderContext\Draw Passes\GBuffer_DrawPass.cpp" />
     <ClCompile Include="Source\Editor\RenderContext\Game_RenderGraph.cpp" />
     <ClCompile Include="Source\Editor\RenderContext\Editor_DataManager.cpp" />
@@ -404,8 +403,6 @@
     <ClInclude Include="Source\Editor\FileSystem\ResourceTypes\ResourceTYPEs.h" />
     <ClInclude Include="Source\Editor\FileSystem\ResourceTypes\Resource_Identifier.h" />
     <ClInclude Include="Source\Editor\FileSystem\ResourceTypes\Scene_Resource.h" />
-    <ClInclude Include="Source\Editor\RenderContext\Compute Passes\Compute_Passes.h" />
-    <ClInclude Include="Source\Editor\RenderContext\Compute Passes\FirstCompute.h" />
     <ClInclude Include="Source\Editor\RenderContext\Draw Passes\Draw_Passes.h" />
     <ClInclude Include="Source\Editor\RenderContext\Draw Passes\GBuffer_DrawPass.h" />
     <ClInclude Include="Source\Editor\RenderContext\Game_RenderGraph.h" />

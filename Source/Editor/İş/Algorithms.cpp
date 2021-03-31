@@ -5,6 +5,9 @@
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include "delaunator.hpp"
+#include "GFX/GFX_Core.h"
+#include "Editor/RenderContext/Editor_DataManager.h"
+#include "Editor/RenderContext/Game_RenderGraph.h"
 using namespace TuranAPI;
 
 #include "kdtree.h"
@@ -191,9 +194,6 @@ namespace TuranEditor {
 		return final_positions;
 	}
 
-	vector<vec3> Algorithms::CrustAlgorithm(vector<vec3>& pointlist) {
-		vector<vec3> PCA_dimensions = Compute_PCA(pointlist);
-	}
 
 	vector<vec3> Algorithms::Compute_PCA(const vector<vec3>& points) {
 		vector<vec3> PCA_Vectors(3);
@@ -295,5 +295,35 @@ namespace TuranEditor {
 			}
 		}
 		return Triangulation;
+	}
+	unsigned int Algorithms::ReconstructSurface(PointCloud* CLOUD, unsigned char KNearestNeighor, GFX_API::VertexAttributeLayout& PositionNormal_VertexAttrib) {
+		vector<vec3> TriangulatedCloudPositions(CLOUD->PointCount * KNearestNeighor * 7);
+		vector<vec3> TriangulatedCloudNormals(TriangulatedCloudPositions.size());
+		unsigned int LastUsedIndex = 0;
+		Algorithms::Generate_KDTree(*CLOUD);
+		for (unsigned int PointIndex = 0; PointIndex < CLOUD->PointCount; PointIndex++) {
+			vector<vec3> PointList = Algorithms::Searchfor_ClosestNeighbors(*CLOUD, CLOUD->PointPositions[PointIndex], KNearestNeighor, true);
+
+			vector<vec3> PCA = Algorithms::Compute_PCA(PointList);
+			vector<vec3> ProjectedPoints = Algorithms::ProjectPoints_OnPlane_thenTriangulate(PointList, PCA[0], PCA[1], PCA[2]);
+
+
+			for (unsigned int TriangulatedPointIndex = 0; TriangulatedPointIndex < ProjectedPoints.size(); TriangulatedPointIndex++) {
+				TriangulatedCloudPositions[LastUsedIndex] = ProjectedPoints[TriangulatedPointIndex];
+				TriangulatedCloudNormals[LastUsedIndex] = PCA[2];
+				LastUsedIndex++;
+			}
+		}
+		{
+			vector<vec3> TriangulatedFinalDatas(TriangulatedCloudPositions.size() * 2);
+			for (unsigned int VertexID = 0; VertexID < TriangulatedCloudPositions.size(); VertexID++) {
+				TriangulatedFinalDatas[VertexID] = TriangulatedCloudPositions[VertexID];
+				TriangulatedFinalDatas[TriangulatedCloudPositions.size() + VertexID] = TriangulatedCloudNormals[VertexID];
+			}
+			unsigned int MESHBUFFER_ID = GFXContentManager->Upload_MeshBuffer(PositionNormal_VertexAttrib, TriangulatedFinalDatas.data(),
+				TriangulatedFinalDatas.size() * 12, TriangulatedCloudPositions.size(), nullptr, 0);
+
+			return MESHBUFFER_ID;
+		}
 	}
 }

@@ -4,17 +4,8 @@ using namespace TuranEditor;
 int main() {
 	Editor_System* EDITORSYSTEM = new Editor_System;
 	Game_RenderGraph First_RenderGraph;
-	Main_Window* main_window = new Main_Window(&First_RenderGraph);
 
 
-	//Load Model
-	const char* CAT = "C:/Users/furka/Desktop/Meshes/cat0.off";
-	const char* HUMAN = "C:/Users/furka/Desktop/Meshes/SCAPE/Meshes/mesh000.off";
-	const char* CLOUDPATH = HUMAN;
-	PointCloud* CLOUD = DataLoader::LoadMesh_asPointCloud(CLOUDPATH);
-	if (!CLOUD) {
-		LOG_CRASHING("Point Cloud import has failed!");
-	}
 
 	//Create Vertex Attribute
 	GFX_API::VertexAttributeLayout PositionNormal_VertexAttrib, PositionOnly_VertexAttrib;
@@ -76,52 +67,10 @@ int main() {
 		BlueLine_MatInstID = RESOURCE->ID;
 	}
 
-	//Draw Call
-	//unsigned int PointBufferID = GFXContentManager->Upload_PointBuffer(PositionNormal_VertexAttrib, CLOUD->PointPositions, CLOUD->PointCount);
-	GFX_API::PointLineDrawCall PointCloud_DrawCall;
-	PointCloud_DrawCall.Draw_asPoint = true;
-	//PointCloud_DrawCall.PointBuffer_ID = PointBufferID;
-	PointCloud_DrawCall.ShaderInstance_ID = BlueLine_MatInstID;
-	//First_RenderGraph.Register_PointDrawCall(PointCloud_DrawCall);
 	
 
-	{
 
-		vector<vec3> TriangulatedCloudPositions(CLOUD->PointCount * 400);
-		vector<vec3> TriangulatedCloudNormals(TriangulatedCloudPositions.size());
-		unsigned int LastUsedIndex = 0;
-		Algorithms::Generate_KDTree(*CLOUD);
-		for (unsigned int PointIndex = 0; PointIndex < CLOUD->PointCount; PointIndex++) {
-			vector<vec3> PointList = Algorithms::Searchfor_ClosestNeighbors(*CLOUD, CLOUD->PointPositions[PointIndex], 50, true);
-
-			vector<vec3> PCA = Algorithms::Compute_PCA(PointList);
-			vector<vec3> ProjectedPoints = Algorithms::ProjectPoints_OnPlane_thenTriangulate(PointList, PCA[0], PCA[1], PCA[2]);
-			
-
-			for (unsigned int TriangulatedPointIndex = 0; TriangulatedPointIndex < ProjectedPoints.size(); TriangulatedPointIndex++) {
-				TriangulatedCloudPositions[LastUsedIndex] = ProjectedPoints[TriangulatedPointIndex];
-				TriangulatedCloudNormals[LastUsedIndex] = PCA[2];
-				LastUsedIndex++;
-			}
-		}
-		{
-			vector<vec3> TriangulatedFinalDatas(TriangulatedCloudPositions.size() * 2);
-			for (unsigned int VertexID = 0; VertexID < TriangulatedCloudPositions.size(); VertexID++) {
-				TriangulatedFinalDatas[VertexID] = TriangulatedCloudPositions[VertexID];
-				TriangulatedFinalDatas[TriangulatedCloudPositions.size() + VertexID] = TriangulatedCloudNormals[VertexID];
-			}
-			unsigned int MESHBUFFER_ID = GFXContentManager->Upload_MeshBuffer(PositionNormal_VertexAttrib, TriangulatedFinalDatas.data(),
-				TriangulatedFinalDatas.size() * 12, TriangulatedCloudPositions.size(), nullptr, 0);
-			GFX_API::DrawCall Mesh_DrawCall;
-			Mesh_DrawCall.MeshBuffer_ID = MESHBUFFER_ID;
-			unsigned int MeshNumber = 0;
-			Mesh_DrawCall.ShaderInstance_ID = Editor_RendererDataManager::Create_SurfaceMaterialInstance(TuranEditor::SURFACEMAT_PROPERTIES(), &MeshNumber);
-			Mesh_DrawCall.JoinedDrawPasses = 0xffffffff;	//Join all draw passes for now!
-
-			First_RenderGraph.Register_DrawCall(Mesh_DrawCall);
-		}
-	}
-
+	Main_Window* main_window = new Main_Window(PositionNormal_VertexAttrib, &First_RenderGraph);
 	long long FrameTime = 0;
 	while (main_window->Get_Is_Window_Open()) {
 		FrameTime /= 1000;	//Convert from macroseconds to milliseconds

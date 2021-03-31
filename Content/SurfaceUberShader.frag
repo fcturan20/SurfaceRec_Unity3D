@@ -55,10 +55,10 @@ vec3 CalculateHeatMap(float minimum, float maximum, float value){
 void main(){
 	//vec4 DIFFUSE = vec4((VertexNormals + 1) / 2, 1.0f);
 	vec3 lightDir = DIRECTIONALLIGHTs[0].DIRECTION;
-	float dotproduct = normalize(dot(normalize(lightDir), normalize(VertexNormals)));
+	float dotproduct = dot(normalize(lightDir), normalize(VertexNormals));
 	gl_FragDepth = LinearizeDepth(gl_FragCoord.z) / far;
-	vec3 C = vec3(dotproduct);
+	vec3 C = vec3(DIRECTIONALLIGHTs[0].COLOR * dotproduct);
 	float gamma = 2.2f;
-	Fragment_Color = vec4(pow(C, vec3(1.0f/gamma)),1.0f);
-	//Fragment_Color = vec4(C, 1.0f);
+	//Fragment_Color = vec4(pow(C, vec3(1.0f/gamma)),1.0f);
+	Fragment_Color = vec4(C, 1.0f);
 }

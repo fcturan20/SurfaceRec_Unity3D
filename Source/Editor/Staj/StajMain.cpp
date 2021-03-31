@@ -5,7 +5,6 @@ using namespace TuranEditor;
 int StajMain() {
 	Editor_System* EDITORSYSTEM = new Editor_System;
 	Game_RenderGraph First_RenderGraph;
-	Main_Window* main_window = new Main_Window(&First_RenderGraph);
 
 
 
@@ -182,6 +181,7 @@ int StajMain() {
 		First_RenderGraph.Register_DrawCall(Mesh_DrawCall);
 	}
 
+	Main_Window* main_window = new Main_Window(PositionOnlyVertexAttribLayout, &First_RenderGraph);
 	long long FrameTime = 0;
 	while (main_window->Get_Is_Window_Open()) {
 		FrameTime /= 1000;	//Convert from macroseconds to milliseconds

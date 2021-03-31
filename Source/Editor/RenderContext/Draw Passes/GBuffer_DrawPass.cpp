@@ -100,6 +100,7 @@ void Main_DrawPass::Execute() {
 			GFXRENDERER->DrawTriangle(MESHes[drawcall_index]);
 		}
 	}
+	DrawCallBuffer.clear();
 	
 	//DRAW LINES
 	{
@@ -119,7 +120,7 @@ void Main_DrawPass::Execute() {
 			}
 		}
 	}
+	
 
-	DrawCallBuffer.clear();
 	LOG_STATUS("G-Buffer Render Loop is finished!");
 }

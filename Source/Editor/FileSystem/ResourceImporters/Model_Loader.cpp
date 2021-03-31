@@ -215,6 +215,7 @@ namespace TuranEditor {
 			//Use this index to set Attribute index for each attribute
 			unsigned int NextAttribute_Index = 1;
 
+			/*
 			//Load UV Sets!
 			for (unsigned int i = 0; i < Attribute_Info.TextCoords; i++) {
 				GFX_API::VertexAttribute TextCoordAttribute;
@@ -233,7 +234,7 @@ namespace TuranEditor {
 				}
 				MESH->DataLayout.Attributes.push_back(TextCoordAttribute);
 				NextAttribute_Index++;
-			}
+			}*/
 
 			if (Attribute_Info.Normal) {
 				GFX_API::VertexAttribute NormalAttribute;

@@ -30,5 +30,5 @@ layout (std140) buffer GEOs{
 
 void main(){
 	gl_Position = PROJ_MATRIX * VIEW_MATRIX * MODEL_MATRICes[0] * vec4(Vertex_Pos, 1.0f);
-	VertexNormals = Vertex_Nor;
+	VertexNormals = mat3(transpose(inverse(MODEL_MATRICes[0]))) *  Vertex_Nor;
 }

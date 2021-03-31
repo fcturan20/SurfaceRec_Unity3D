@@ -1,6 +1,5 @@
 #include "Game_RenderGraph.h"
 #include "Draw Passes/Draw_Passes.h"
-#include "Compute Passes/Compute_Passes.h"
 #include "Editor/FileSystem/EditorFileSystem_Core.h"
 #include "Editor/FileSystem/ResourceTypes/ResourceTYPEs.h"
 #include "Editor/FileSystem/ResourceTypes/Resource_Identifier.h"
@@ -54,8 +53,6 @@ namespace TuranEditor {
 		GFXContentManager->Create_Texture(DEPTH_RT, DEPTHRT_RESOURCE->ID);
 		MainDrawPass_SLOTs[1].RT_ID = DEPTHRT_RESOURCE->ID;
 		MainPass->RenderGraph_SetupPhase(MainDrawPass_SLOTs);
-
-		RENDER_NODEs.push_back(new FirstCompute);
 	}
 
 	void Game_RenderGraph::Run_RenderGraph() {
@@ -69,8 +66,9 @@ namespace TuranEditor {
 		GFX_API::DrawPass* MainPass = (GFX_API::DrawPass*)RENDER_NODEs[0];
 		MainPass->ResourceUpdatePhase();
 		MainPass->Execute();
+		DrawCalls.clear();
+		PointDrawCallBuffer.clear();
 
-		((GFX_API::ComputePass*)RENDER_NODEs[1])->Execute();
 
 		//Display the final result on main window!
 		GFX_API::Framebuffer* FB = GFXContentManager->Find_Framebuffer_byGFXID(MainPass->Get_FramebufferID());

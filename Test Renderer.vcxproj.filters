@@ -165,9 +165,6 @@
     <ClCompile Include="Source\TuranAPI\Profiler_Core.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\RenderContext\Compute Passes\FirstCompute.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Editor\Staj\DijkstraSPFAlgorithm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -354,12 +351,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\TuranAPI\Profiler_Core.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\RenderContext\Compute Passes\FirstCompute.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\RenderContext\Compute Passes\Compute_Passes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="3rdPartyLibraries\Includes\Eigen\src\Cholesky\LDLT.h">
