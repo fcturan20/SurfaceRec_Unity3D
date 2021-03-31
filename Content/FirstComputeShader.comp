@@ -1,0 +1,101 @@
+#version 460
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(rgba32f, binding = 0) uniform image2D OutputTexture;
+
+#define FAILEDINTERSECTION_SENTINEL vec4(0,0,0,-1)
+#define M_PI 3.14f
+
+layout (std430) buffer RAYTRACE_CAMERA{
+    vec3 camera_worldpos;
+    mat4 CAMERA_TO_WORLD;
+};
+
+#define MAX_MATINSTNUMBER 1000
+#define MAX_SPOTLIGHTs 10
+#define MAX_POINTLIGHTs 10
+#define MAX_DIRECTIONALLIGHTs 1
+struct PointLight{
+	vec3 POSITION;
+};
+
+struct SpotLight{
+	vec3 POSITION;
+};
+
+struct DirectionalLight{
+	vec3 DIRECTION;
+	vec3 COLOR;
+};
+
+layout (std430) buffer LIGHTs{
+	DirectionalLight DIRECTIONALLIGHTs[MAX_DIRECTIONALLIGHTs];
+	PointLight POINTLIGHTs[MAX_POINTLIGHTs];
+	SpotLight SPOTLIGHTs[MAX_SPOTLIGHTs];
+	uint DIRECTIONALLIGHTs_COUNT, POINTLIGHTs_COUNT, SPOTLIGHTs_COUNT;
+};
+
+vec3 SPHERE_CENTER = vec3(0,0,10);
+float SPHERE_RADIUS = 1.0f;
+
+//Return the position of the intersection point
+//Formulas from Geometric Solution in https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection
+vec4 Calculate_SphereIntersection(vec3 O, vec3 D){
+    vec3 C = SPHERE_CENTER;
+    float radius = SPHERE_RADIUS;
+
+    D = normalize(D);
+    vec3 L = C - O;
+    float tca = dot(L, D);
+    if(tca < 0){
+        return FAILEDINTERSECTION_SENTINEL;
+    }
+
+    float length_L = length(L);
+    float d = sqrt((length_L * length_L) - (tca * tca));
+    if(d > radius){
+        return FAILEDINTERSECTION_SENTINEL;
+    }
+    if(d < 0){
+        return FAILEDINTERSECTION_SENTINEL;
+    }
+
+    float t0 = tca - sqrt((radius * radius) - (d * d));
+
+    return vec4(O + (t0 * D), 1.0f);
+};
+
+
+
+void main(){
+    vec4 pixel_color = vec4(0,1,0,1);
+
+    ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 image_Size = imageSize(OutputTexture);
+    float aspect_ratio = float(image_Size.x) / float(image_Size.y);
+
+    
+    float FOV_angle = 22.5f;
+    float FOV_radians = radians(FOV_angle);
+    vec2 ImPlane = vec2(1.0f, 1.0f);
+    float distanceto_rightedge = ImPlane.y / (2 * tan(FOV_radians / 2));
+    float focal_length = sqrt(distanceto_rightedge * distanceto_rightedge - ImPlane.x / 2 * ImPlane.x / 2);
+    
+    //NDC here is in [-1,1].
+    vec2 pixel_NDCPos = ((pixel_coords + 0.5f) / image_Size) * 2 - 1;
+    //Now scale x positions by aspect ratio
+    pixel_NDCPos.x *= aspect_ratio;
+
+
+    vec4 CS_RAYDIR = vec4(pixel_NDCPos.xy, -focal_length, 0.0f);
+    vec3 WS_RAYDIR = (CAMERA_TO_WORLD * CS_RAYDIR).xyz;
+
+    
+    vec4 INTERSECTION_POINT = Calculate_SphereIntersection(camera_worldpos.xyz, WS_RAYDIR);
+    if(INTERSECTION_POINT != FAILEDINTERSECTION_SENTINEL){
+        vec3 Normal = normalize(INTERSECTION_POINT.xyz - SPHERE_CENTER);
+        vec3 LightDir = normalize(-DIRECTIONALLIGHTs[0].DIRECTION);
+        pixel_color = vec4(DIRECTIONALLIGHTs[0].COLOR * dot(Normal,LightDir),1.0f);
+    }
+    //pixel_color = vec4(pixel_NDCPos, 0.0f, 1.0f);
+    imageStore(OutputTexture, pixel_coords, pixel_color);
+}
