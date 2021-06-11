@@ -6,28 +6,29 @@ layout (depth_less) out float gl_FragDepth;
 #define MAX_POINTLIGHTs 10
 #define MAX_DIRECTIONALLIGHTs 1
 
+struct PointLight{
+	vec3 POSITION;
+};
 
-uniform vec3 POINTCOLOR;
-uniform uint POINTLIGHT_INDEX, SPOTLIGHT_INDEX;
+struct SpotLight{
+	vec3 POSITION;
+};
 
-float near = 0.1f; 
-float far  = 10000.0f; 
-  
-float LinearizeDepth(float depth) 
-{
-    float z = depth * 2.0 - 1.0; // back to NDC 
-    return (2.0 * near * far) / (far + near - z * (far - near));	
-}
+struct DirectionalLight{
+	vec3 DIRECTION;
+	vec3 COLOR;
+};
+
+layout (std430, binding = 2) buffer LIGHTs{
+	DirectionalLight DIRECTIONALLIGHTs[MAX_DIRECTIONALLIGHTs];
+	PointLight POINTLIGHTs[MAX_POINTLIGHTs];
+	SpotLight SPOTLIGHTs[MAX_SPOTLIGHTs];
+	uint DIRECTIONALLIGHTs_COUNT, POINTLIGHTs_COUNT, SPOTLIGHTs_COUNT;
+};
+
+
+in vec3 vertex_color;
+
 void main(){
-	if(POINTLIGHT_INDEX > 0){
-		Fragment_Color = vec4(0,1,0,1);
-	}
-	else if(SPOTLIGHT_INDEX > 0){
-		Fragment_Color = vec4(1,0,0,1);
-	}
-	else{
-		Fragment_Color = vec4(POINTCOLOR, 1.0f);
-		gl_FragDepth = gl_FragCoord.z - 0.0001f;
-	}
-	gl_FragDepth = LinearizeDepth(gl_FragCoord.z) / far;
+	Fragment_Color = vec4(vertex_color, 1.0f);
 }

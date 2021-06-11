@@ -1,4 +1,5 @@
 #include "IMGUI_WINDOW.h"
+#include "GFX\GFX_Core.h"
 
 namespace GFX_API {
 	IMGUI_WINDOW::IMGUI_WINDOW(const char* name) {
@@ -63,6 +64,10 @@ namespace GFX_API {
 			for (; previous_size < ALL_IMGUI_WINDOWs.size(); previous_size++) {
 				ALL_IMGUI_WINDOWs[previous_size]->Run_Window();
 			}
+		}
+
+		if (ALL_IMGUI_WINDOWs.size() == 0) {
+			IMGUI->Is_IMGUI_Open = false;
 		}
 	}
 	void IMGUI_WindowManager::Register_WINDOW(IMGUI_WINDOW* WINDOW) {

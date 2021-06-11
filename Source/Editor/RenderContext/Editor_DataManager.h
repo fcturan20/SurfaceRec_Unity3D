@@ -3,12 +3,14 @@
 #include "GFX/IMGUI/IMGUI_WINDOW.h"
 #include "Editor/FileSystem/ResourceTypes/Resource_Identifier.h"
 #include "GFX/GFX_FileSystem/Resource_Type/Material_Type_Resource.h"
+#include "GFX\GFX_Core.h"
 
 namespace TuranEditor {
 #define MAX_WORLDOBJECTs 1000
 #define MAX_DIRECTIONALLIGHTs 1
 #define MAX_SPOTLIGHTs 10
 #define MAX_POINTLIGHTs 10
+
 
 	struct SURFACEMAT_PROPERTIES {
 		unsigned int DIFFUSETEXTURE_ID = 0;
@@ -38,15 +40,14 @@ namespace TuranEditor {
 		unsigned int LIGHT_INDEX;
 	};
 
-	class Editor_RendererDataManager {
-
-		static Bitset WORLDOBJECT_IDs;
-		static unsigned int Create_OBJECTINDEX();
-		static void Delete_OBJECTINDEX(unsigned int INDEX);
-		static void Load_SurfaceMaterialType();
-		static void Load_PointLineMaterialType();
-
+	class RenderDataManager {
 	public:
+		//Geometry Processing Datas
+		static GFX_API::VertexAttributeLayout PositionNormal_VertexAttrib, PositionOnly_VertexAttrib;
+		static unsigned int ShadedPoint_MatInst, NormalLine_MatInst;
+
+		//Core Renderer Datas
+
 		static mat4* CAMERABUFFER_DATA, * WORLDOBJECTs_BUFFERDATA;
 		static void* LIGHTsBUFFER_DATA, *GEODESICSBUFFERDATA;
 		static unsigned int WORLDOBJECTs_GLOBALBUFFERID, MATINSTs_GLOBALBUFFERID, CAMERA_GLOBALBUFFERID, LIGHTs_GLOBALBUFFERID,

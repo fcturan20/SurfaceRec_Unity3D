@@ -54,7 +54,7 @@ namespace TuranEditor {
 				return RESOURCE;
 			}
 		}
-		LOG_ERROR("Find_ResourceIdentifier_byID has failed to find the resource!");
+		LOG_CRASHING("Find_ResourceIdentifier_byID has failed to find the resource!");
 		return nullptr;
 	}
 

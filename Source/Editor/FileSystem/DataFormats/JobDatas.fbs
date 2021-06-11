@@ -1,0 +1,22 @@
+struct Vec3f{
+    x : float;
+    y : float;
+    z : float;
+}
+
+table RecMesh{
+Positions : [Vec3f];
+Normals : [Vec3f];
+ReconstructionType : ubyte;
+KNN : ubyte;
+}
+
+union Resource_Type{
+    ReconstructedMesh : RecMesh
+}
+
+table Resource{
+    TYPE : Resource_Type;
+}
+
+root_type Resource;

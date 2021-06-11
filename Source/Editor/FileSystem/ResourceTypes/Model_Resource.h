@@ -14,14 +14,14 @@ namespace TuranEditor {
 	};
 
 	struct Edge {
-		uint32 VertexIDs[2]{0, 0};
-		int32 TriangleIDs[2]{-1, -1};
-		float Length;
+		uint32 VertexIDs[2]{UINT32_MAX, UINT32_MAX };
+		uint32 TriangleIDs[2]{UINT32_MAX, UINT32_MAX };
+		float Length = FLT_MIN;
 	};
 
 	struct Triangle {
-		uint32 VertexIDs[3];
-		int32 EdgeIDs[3]{ -1,-1,-1 };
+		uint32 VertexIDs[3]{UINT32_MAX, UINT32_MAX, UINT32_MAX };
+		uint32 EdgeIDs[3]{ UINT32_MAX, UINT32_MAX, UINT32_MAX };
 	};
 	
 	struct Static_Mesh_Data {

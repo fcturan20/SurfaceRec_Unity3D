@@ -6,7 +6,7 @@
 namespace TuranEditor {
 	Editor_System::Editor_System() {
 		new OpenGL4::OpenGL4_Core;
-		Editor_RendererDataManager::Start_RenderingDataManagement();
+		RenderDataManager::Start_RenderingDataManagement();
 	}
 	Editor_System::~Editor_System() {
 		((OpenGL4::OpenGL4_Core*)GFX)->~OpenGL4_Core();

@@ -22,12 +22,12 @@ namespace TuranEditor {
 
 			//Check if scene reading errors!
 			if (!Scene || Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !Scene->mRootNode) {
-				std::cout << (("Failed on Loading Mesh with Assimp; " + string(import.GetErrorString())).c_str()) << std::endl;
+				LOG_ERROR("Failed on Loading Mesh with Assimp; " + string(import.GetErrorString()));
 				return nullptr;
 			}
 
 			if (Scene->mNumMeshes == 0) {
-				std::cout << "Failed because there is no mesh in loaded scene!" << std::endl;
+				LOG_ERROR("Failed because there is no mesh in loaded scene!");
 				return nullptr;
 			}
 		}
@@ -43,6 +43,23 @@ namespace TuranEditor {
 			//First, fill the position buffer
 			memcpy(&LoadedCloud->PointPositions[StartIndex], Scene->mMeshes[i]->mVertices, Scene->mMeshes[i]->mNumVertices * sizeof(vec3));
 			StartIndex += Scene->mMeshes[i]->mNumVertices;
+		}
+		bool NormalCompatible = true;
+		for (unsigned int i = 0; i < Scene->mNumMeshes; i++) {
+			if (!Scene->mMeshes[i]->HasNormals()) {
+				NormalCompatible = false;
+				break;
+			}
+		}
+		//Load normals
+		if (NormalCompatible) {
+			StartIndex = 0;
+			LoadedCloud->PointNormals = new vec3[LoadedCloud->PointCount];
+			for (unsigned int i = 0; i < Scene->mNumMeshes; i++) {
+				//First, fill the position buffer
+				memcpy(&LoadedCloud->PointNormals[StartIndex], Scene->mMeshes[i]->mNormals, Scene->mMeshes[i]->mNumVertices * sizeof(vec3));
+				StartIndex += Scene->mMeshes[i]->mNumVertices;
+			}
 		}
 
 

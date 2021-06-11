@@ -110,10 +110,18 @@ void Main_DrawPass::Execute() {
 		const GFX_API::PointLineDrawCall* PointLineDraw = nullptr;
 		for (unsigned int call_index = 0; call_index < RG_PointDrawCallBuffer.size(); call_index++) {
 			PointLineDraw = &RG_PointDrawCallBuffer[call_index];
-			GFX_API::Material_Instance* MatInst = (GFX_API::Material_Instance*)TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(PointLineDraw->ShaderInstance_ID)->DATA;
+			TuranEditor::Resource_Identifier* MATINSTRES = TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(PointLineDraw->ShaderInstance_ID);
+			if (!MATINSTRES) {
+				LOG_CRASHING("Point-line mat instance isn't found!");
+			}
+			GFX_API::Material_Instance* MatInst = (GFX_API::Material_Instance*)MATINSTRES->DATA;
 			GFXRENDERER->Bind_MatInstance(MatInst);
 			if (PointLineDraw->Draw_asPoint) {
-				GFXRENDERER->DrawPoint(GFXContentManager->Find_PointBuffer_byBufferID(PointLineDraw->PointBuffer_ID));
+				GFX_API::GFX_Point* PointBuf = GFXContentManager->Find_PointBuffer_byBufferID(PointLineDraw->PointBuffer_ID);
+				if (!PointBuf) {
+					LOG_CRASHING("Point buffer isn't found!");
+				}
+				GFXRENDERER->DrawPoint(PointBuf);
 			}
 			else {
 				GFXRENDERER->DrawLine(GFXContentManager->Find_PointBuffer_byBufferID(PointLineDraw->PointBuffer_ID));

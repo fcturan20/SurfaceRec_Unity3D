@@ -496,7 +496,7 @@ namespace OpenGL4 {
 			SHADERSOURCEs.erase(SHADERSOURCEs.begin() + vector_index);
 			return;
 		}
-		LOG_WARNING("Unload has failed because intended Shader Source isn't found in OpenGL::GPU_ContentManager!");
+		LOG_CRASHING("Unload has failed because intended Shader Source isn't found in OpenGL::GPU_ContentManager!");
 	}
 	void GPU_ContentManager::Link_MaterialType(GFX_API::Material_Type* MATTYPE_ASSET, unsigned int Asset_ID, string* compilation_status) {
 		//Link and return the Shader Program!
@@ -505,11 +505,18 @@ namespace OpenGL4 {
 
 		void* VS_ID = Find_GFXShaderSource_byID(MATTYPE_ASSET->VERTEXSOURCE_ID)->GL_ID;
 		if (!VS_ID) {
-			LOG_WARNING("Vertex Shader isn't uploaded to GPU, so Shader Program linking failed!");
+			LOG_CRASHING("Vertex Shader isn't uploaded to GPU, so Shader Program linking failed!");
+		}
+		if (MATTYPE_ASSET->GEOMETRYSOURCE_ID != UINT32_MAX) {
+			void* GS_ID = Find_GFXShaderSource_byID(MATTYPE_ASSET->GEOMETRYSOURCE_ID)->GL_ID;
+			if (!GS_ID) {
+				LOG_CRASHING("Geometry Shader isn't uploaded to GPU, so Shader Program linking failed!");
+			}
+			glAttachShader(*program_id, *(unsigned int*)GS_ID);
 		}
 		void* FS_ID = Find_GFXShaderSource_byID(MATTYPE_ASSET->FRAGMENTSOURCE_ID)->GL_ID;
 		if (!FS_ID) {
-			LOG_WARNING("Vertex Shader isn't uploaded to GPU, so Shader Program linking failed!");
+			LOG_CRASHING("Vertex Shader isn't uploaded to GPU, so Shader Program linking failed!");
 		}
 		//Link Vertex and Fragment Shader to Shader Program and set ID
 		glAttachShader(*program_id, *(unsigned int*)VS_ID);

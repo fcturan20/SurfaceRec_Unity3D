@@ -162,6 +162,7 @@ namespace GFX_API {
 			}
 		}
 		LOG_WARNING("Intended Point Buffer isn't found in GPU_ContentManager!");
+		return nullptr;
 	}
 	GFX_Buffer* GPU_ContentManager::Find_GlobalBuffer_byBufferID(unsigned int GlobalBufferID, unsigned int* vector_index) {
 		for (unsigned int i = 0; i < GLOBALBUFFERs.size(); i++) {
@@ -233,6 +234,7 @@ namespace GFX_API {
 				return &SHADERPROGRAM;
 			}
 		}
-		LOG_WARNING("Intended ShaderProgram isn't uploaded to GPU!");
+		LOG_CRASHING("Intended ShaderProgram isn't uploaded to GPU!");
+		return nullptr;
 	}
 }

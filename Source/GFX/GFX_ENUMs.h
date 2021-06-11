@@ -158,8 +158,8 @@ namespace GFX_API {
 
 	enum class SHADER_STAGE : unsigned char {
 		VERTEXSTAGE		= 0,
-		//There should be TESSELATION etc.
-		FRAGMENTSTAGE	= 1
+		FRAGMENTSTAGE	= 1,
+		GEOMETRYSTAGE	= 2
 	};
 	GFXAPI const char* GetNameof_SHADERSTAGE(SHADER_STAGE SHADERSTAGE);
 	GFXAPI vector<const char*> GetNames_SHADERSTAGEs();

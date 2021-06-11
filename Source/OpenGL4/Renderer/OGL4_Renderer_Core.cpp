@@ -171,7 +171,7 @@ namespace OpenGL4 {
 		void* data = uniform->DATA;
 		switch (uniform->VARIABLE_TYPE) {
 		case GFX_API::DATA_TYPE::VAR_UINT32:
-			glUniform1i(location, *(unsigned int*)data);
+			glUniform1ui(location, *(unsigned int*)data);
 			break;
 		case GFX_API::DATA_TYPE::VAR_INT32:
 			glUniform1i(location, *(int*)data);

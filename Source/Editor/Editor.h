@@ -1,6 +1,7 @@
 #pragma once
 #include "Editor_Includes.h"
-#include "Editors/Main_Window.h"
+#include "Editors\Main_Window.h"
+#include "Editors\PointCloudViewer.h"
 #include "RenderContext/Game_RenderGraph.h"
 #include "GFX/IMGUI/IMGUI_Core.h"
 #include "GFX/GFX_Core.h"

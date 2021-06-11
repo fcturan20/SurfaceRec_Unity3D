@@ -14,9 +14,9 @@ int StajMain() {
 	//Create Material Instances to render lines
 	unsigned int BlueLine_MatInstID = 0, RedLine_MatInstID = 0;
 	//Blue Line
-	GFX_API::Material_Type* POINTLINE_MATTYPE = (GFX_API::Material_Type*)TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(TuranEditor::Editor_RendererDataManager::PointLineMaterialID)->DATA;
+	GFX_API::Material_Type* POINTLINE_MATTYPE = (GFX_API::Material_Type*)TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(TuranEditor::RenderDataManager::PointLineMaterialID)->DATA;
 	GFX_API::Material_Instance* BlueLine_MatInst = new GFX_API::Material_Instance;
-	BlueLine_MatInst->Material_Type = TuranEditor::Editor_RendererDataManager::PointLineMaterialID;
+	BlueLine_MatInst->Material_Type = TuranEditor::RenderDataManager::PointLineMaterialID;
 
 	//Uniform Preparing
 	BlueLine_MatInst->UNIFORM_LIST = POINTLINE_MATTYPE->UNIFORMs;
@@ -41,7 +41,7 @@ int StajMain() {
 
 	//Red Line
 	GFX_API::Material_Instance* RedLine_MatInst = new GFX_API::Material_Instance;
-	RedLine_MatInst->Material_Type = TuranEditor::Editor_RendererDataManager::PointLineMaterialID;
+	RedLine_MatInst->Material_Type = TuranEditor::RenderDataManager::PointLineMaterialID;
 
 	//Uniform Preparing
 	RedLine_MatInst->UNIFORM_LIST = POINTLINE_MATTYPE->UNIFORMs;
@@ -126,7 +126,7 @@ int StajMain() {
 
 
 		unsigned data_size = 0;
-		Editor_RendererDataManager::UpdateGeodesicDistances(FinalVisBuf.GetGPUData(data_size), data_size);
+		RenderDataManager::UpdateGeodesicDistances(FinalVisBuf.GetGPUData(data_size), data_size);
 	}
 
 
@@ -189,7 +189,7 @@ int StajMain() {
 		LOG_STATUS("Delta time in float: " + to_string(float(FrameTime)));
 		TURAN_PROFILE_SCOPE_O("Run Loop", &FrameTime);
 
-		Editor_RendererDataManager::Update_GPUResources();
+		RenderDataManager::Update_GPUResources();
 		IMGUI->New_Frame();
 		IMGUI_RUNWINDOWS();
 		GFX->Swapbuffers_ofMainWindow();

@@ -88,7 +88,6 @@ namespace TuranEditor {
 
 			//Finalization
 			compilation_status.append("Compiled the model successfully!");
-			new Status_Window(compilation_status.c_str());
 		}
 
 		//If model has materials, create a Folder and load materials etc.
@@ -170,18 +169,18 @@ namespace TuranEditor {
 		Triangle& Triangle =  Mesh->Triangles[TriangleID];
 		//Select which TriangleID to modify
 		unsigned int i = 0;
-		if (Mesh->Edges[EdgeID].TriangleIDs[0] != -1) {
+		if (Mesh->Edges[EdgeID].TriangleIDs[0] != UINT32_MAX) {
 			i = 1;
 		}
 		Mesh->Edges[EdgeID].TriangleIDs[i] = TriangleID;
 
 		//Find unused edge array index in triangles array
 		unsigned int UnusedEdgeIndex = 0;
-		if (Triangle.EdgeIDs[0] != -1) {
+		if (Triangle.EdgeIDs[0] != UINT32_MAX) {
 			UnusedEdgeIndex++;
-			if (Triangle.EdgeIDs[1] != -1) {
+			if (Triangle.EdgeIDs[1] != UINT32_MAX) {
 				UnusedEdgeIndex++;
-				if (Triangle.EdgeIDs[2] != -1) {
+				if (Triangle.EdgeIDs[2] != UINT32_MAX) {
 					LOG_CRASHING("Wait WTF?");
 				}
 			}
@@ -306,8 +305,8 @@ namespace TuranEditor {
 			MESH->INDICES_NUMBER = data->mNumFaces * 3;
 		}
 
-
-
+		//This needs a huge fix because data structure has changed a little bit
+		/*
 		MESH->Vertexes = new Vertex[MESH->VERTEX_NUMBER];
 		MESH->Triangles = new Triangle[MESH->INDICES_NUMBER / 3];
 		for (unsigned int VertexIndex = 0; VertexIndex < MESH->VERTEX_NUMBER; VertexIndex++) {
@@ -336,7 +335,7 @@ namespace TuranEditor {
 				MESH->Triangles[TriangleIndex].EdgeIDs[2] == -1) {
 				LOG_CRASHING("Wait WTF?");
 			}
-		}
+		}*/
 	}
 
 
@@ -371,6 +370,6 @@ namespace TuranEditor {
 			properties.OPACITYTEXTURE_ID = Texture_Loader::Import_Texture(texture_path.c_str())->ID;
 		}
 
-		return Editor_RendererDataManager::Create_SurfaceMaterialInstance(properties, object_worldid);
+		return RenderDataManager::Create_SurfaceMaterialInstance(properties, object_worldid);
 	}
 }

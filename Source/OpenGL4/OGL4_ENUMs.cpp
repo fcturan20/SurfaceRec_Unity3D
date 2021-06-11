@@ -213,6 +213,8 @@ namespace OpenGL4 {
 			return GL_VERTEX_SHADER;
 		case GFX_API::SHADER_STAGE::FRAGMENTSTAGE:
 			return GL_FRAGMENT_SHADER;
+		case GFX_API::SHADER_STAGE::GEOMETRYSTAGE:
+			return GL_GEOMETRY_SHADER;
 		default:
 			LOG_CRASHING("Intended Shader Stage Type isn't supported by OpenGL4 for now!");
 			return NULL;

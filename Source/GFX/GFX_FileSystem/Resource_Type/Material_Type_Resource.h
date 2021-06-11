@@ -51,7 +51,7 @@ namespace GFX_API {
 	public:
 		Material_Type();
 
-		unsigned int VERTEXSOURCE_ID, FRAGMENTSOURCE_ID;
+		unsigned int VERTEXSOURCE_ID, FRAGMENTSOURCE_ID, GEOMETRYSOURCE_ID = UINT32_MAX;
 
 		vector<Texture_Access> TEXTUREs;
 		vector<Material_Uniform> UNIFORMs;

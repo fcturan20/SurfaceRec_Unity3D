@@ -105,6 +105,7 @@ namespace GFX_API {
 		default:
 			LOG_ERROR("GetTextureCHANNEL_byIndex doesn't support this index!");
 		}
+		return TEXTURE_CHANNELs::API_TEXTURE_RGBA32F;
 	}
 	GFXAPI unsigned int GetIndexOf_TextureCHANNEL(TEXTURE_CHANNELs CHANNEL) {
 		LOG_NOTCODED("Texture Channels enum has changed but function related to it hasn't. Fix it!", true);
@@ -112,6 +113,7 @@ namespace GFX_API {
 		default:
 			LOG_ERROR("GetIndexOf_TextureCHANNEL doesn't support this channel type!");
 		}
+		return 0;
 	}
 
 
@@ -160,13 +162,15 @@ namespace GFX_API {
 			return "Vertex Shader";
 		case SHADER_STAGE::FRAGMENTSTAGE:
 			return "Fragment Shader";
+		case SHADER_STAGE::GEOMETRYSTAGE:
+			return "Geometry Shader";
 		default:
 			LOG_ERROR("GetNameof_SHADERSTAGE() doesn't support this language!");
 		}
 	}
 	GFXAPI vector<const char*> GetNames_SHADERSTAGEs() {
 		return vector<const char*> {
-			GetNameof_SHADERSTAGE(SHADER_STAGE::VERTEXSTAGE) , GetNameof_SHADERSTAGE(SHADER_STAGE::FRAGMENTSTAGE)
+			GetNameof_SHADERSTAGE(SHADER_STAGE::VERTEXSTAGE) , GetNameof_SHADERSTAGE(SHADER_STAGE::FRAGMENTSTAGE), GetNameof_SHADERSTAGE(SHADER_STAGE::GEOMETRYSTAGE)
 		};
 	}
 	GFXAPI SHADER_STAGE GetSHADERSTAGE_byIndex(unsigned int Index) {
@@ -175,6 +179,8 @@ namespace GFX_API {
 			return SHADER_STAGE::VERTEXSTAGE;
 		case 1:
 			return SHADER_STAGE::FRAGMENTSTAGE;
+		case 2:
+			return SHADER_STAGE::GEOMETRYSTAGE;
 		default:
 			LOG_ERROR("GetSHADERSTAGE_byIndex() doesn't support this index!");
 		}
