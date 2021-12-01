@@ -7,6 +7,7 @@
 namespace OpenGL4 {
 
 	void OpenGL4_Renderer::Bind_Framebuffer(const GFX_API::Framebuffer* FB) {
+		
 		glBindFramebuffer(GL_FRAMEBUFFER, *(unsigned int*)FB->GL_ID);
 		for (unsigned int i = 0; i < FB->BOUND_RTs.size(); i++) {
 			auto RT = FB->BOUND_RTs[i];
@@ -99,7 +100,9 @@ namespace OpenGL4 {
 	void OpenGL4_Renderer::DrawTriangle(const GFX_API::GFX_Mesh* MESH) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		OGL4_MESH* GL_MESH = (OGL4_MESH*)MESH->GL_ID;
-		glBindVertexArray(GL_MESH->VAO);
+		if (GL_MESH != nullptr) {
+			glBindVertexArray(GL_MESH->VAO);
+		}
 		//Indexed Rendering
 		if (MESH->INDEX_COUNT) {
 			glDrawElements(GL_TRIANGLES, MESH->INDEX_COUNT, GL_UNSIGNED_INT, 0);
@@ -110,6 +113,7 @@ namespace OpenGL4 {
 		}
 	}
 	void OpenGL4_Renderer::DrawPoint(const GFX_API::GFX_Point* POINTBUFFER) {
+		glPointSize(10.0f);
 		OGL4_MESH* GL_MESH = (OGL4_MESH*)POINTBUFFER->GL_ID;
 		GFX->Check_Errors();
 		glBindVertexArray(GL_MESH->VAO);
@@ -122,7 +126,42 @@ namespace OpenGL4 {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glBindVertexArray(GL_MESH->VAO);
 		glDrawArrays(GL_LINE_STRIP, 0, POINTBUFFER->POINT_COUNT);
+	}		
+	void OpenGL4_Renderer::DrawSpecialShader(GFX_API::Material_Instance* MATINST, unsigned int VERTEXCOUNT, const std::vector<GFX_API::Material_Uniform>& OverridenUniforms) {
+		unsigned int PROGRAM_GLID = *(unsigned int*)GFXContentManager->Find_GFXShaderProgram_byID(MATINST->Material_Type)->GL_ID;
+		glUseProgram(PROGRAM_GLID);
+		//Bind previous uniforms!
+		for (GFX_API::Material_Uniform UNIFORM : MATINST->UNIFORM_LIST) {
+			Bind_Uniform(PROGRAM_GLID, &UNIFORM);
+		}
+		//Now override the uniforms!
+		for (GFX_API::Material_Uniform UNIFORM : OverridenUniforms) {
+			Bind_Uniform(PROGRAM_GLID, &UNIFORM);
+		}
+		//Bind uniform textures!
+		for (GFX_API::Texture_Access TEXTURE : MATINST->TEXTURE_LIST) {
+			if (TEXTURE.ACCESS_TYPE == GFX_API::TEXTURE_ACCESS::SAMPLER_OPERATION && TEXTURE.TEXTURE_ID) {
+				glActiveTexture(GL_TEXTURE0 + TEXTURE.BINDING_POINT);
+				GFX_API::GFX_Texture* GFXTEXTURE = GFXContentManager->Find_GFXTexture_byID(TEXTURE.TEXTURE_ID);
+				if (GFXTEXTURE) {
+					glBindTexture(GL_TEXTURE_2D, *(unsigned int*)GFXTEXTURE->GL_ID);
+				}
+			}
+		}
+		//Bind image textures!
+		for (GFX_API::Texture_Access TEXTURE : MATINST->TEXTURE_LIST) {
+			if (TEXTURE.ACCESS_TYPE == GFX_API::TEXTURE_ACCESS::IMAGE_OPERATION && TEXTURE.TEXTURE_ID) {
+				unsigned int TEXTURE_GLID = *(unsigned int*)GFXContentManager->Find_GFXTexture_byID(TEXTURE.TEXTURE_ID)->GL_ID;
+				glBindImageTexture(TEXTURE.BINDING_POINT, TEXTURE_GLID, 0, GL_FALSE, 0, Find_OGLOperationType(TEXTURE.OP_TYPE), Find_ImageTexture_InternalFormat(TEXTURE.CHANNELs));
+			}
+		}
+
+
+		glBindVertexArray(0);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glDrawArrays(GL_POINTS, 0, VERTEXCOUNT);
 	}
+
 	void OpenGL4_Renderer::Compute_Dispatch(const GFX_API::ComputeShader_Instance* CS, vec3 Dispatch_Groups) {
 		Bind_ComputeInstance(CS);
 		glDispatchCompute(Dispatch_Groups.x, Dispatch_Groups.y, Dispatch_Groups.z);

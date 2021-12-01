@@ -11,25 +11,25 @@ unsigned int Main_DrawPass::Get_BitMaskFlag() {
 	return 1;
 }
 
-Main_DrawPass::Main_DrawPass(const vector<GFX_API::DrawCall>& i_RG_DrawCallBuffer_, const vector<GFX_API::PointLineDrawCall>& i_RG_PointDrawCallBuffer, vector<GFX_API::Framebuffer::RT_SLOT>& Needed_RTSlots)
-	: DrawPass(i_RG_DrawCallBuffer_, i_RG_PointDrawCallBuffer, "Main Pass") {
+Main_DrawPass::Main_DrawPass(const vector<GFX_API::DrawCall>& i_RG_DrawCallBuffer_, const vector<GFX_API::PointLineDrawCall>& i_RG_PointDrawCallBuffer, const vector<GFX_API::SpecialDrawCall>& i_RGSpecialDCBuffer, vector<GFX_API::Framebuffer::RT_SLOT>& Needed_RTSlots)
+	: DrawPass(i_RG_DrawCallBuffer_, i_RG_PointDrawCallBuffer, i_RGSpecialDCBuffer, "Main Pass") {
 	GFX_API::Framebuffer::RT_SLOT Color0_SLOT;
 	Color0_SLOT.ATTACHMENT_TYPE = GFX_API::RT_ATTACHMENTs::TEXTURE_ATTACHMENT_COLOR0;
-	Color0_SLOT.RT_OPERATIONTYPE = GFX_API::OPERATION_TYPE::WRITE_ONLY;
+	Color0_SLOT.RT_OPERATIONTYPE = GFX_API::OPERATION_TYPE::READ_AND_WRITE;
 	Color0_SLOT.RT_READTYPE = GFX_API::RT_READSTATE::CLEAR;
 	Color0_SLOT.CLEAR_COLOR = vec3(0.5f, 0.7f, 0.7f);
 	//These should be set by RenderGraph!
-	Color0_SLOT.HEIGTH = 0; Color0_SLOT.WIDTH = 0; Color0_SLOT.RT_ID = 0;
+	Color0_SLOT.HEIGHT = 1080; Color0_SLOT.WIDTH = 1920; Color0_SLOT.RT_ID = 0;
 	Needed_RTSlots.push_back(Color0_SLOT);
 	
 
 	GFX_API::Framebuffer::RT_SLOT Depth_SLOT;
 	Depth_SLOT.ATTACHMENT_TYPE = GFX_API::RT_ATTACHMENTs::TEXTURE_ATTACHMENT_DEPTH;
-	Depth_SLOT.RT_OPERATIONTYPE = GFX_API::OPERATION_TYPE::WRITE_ONLY;
+	Depth_SLOT.RT_OPERATIONTYPE = GFX_API::OPERATION_TYPE::READ_AND_WRITE;
 	Depth_SLOT.RT_READTYPE = GFX_API::RT_READSTATE::CLEAR;
 	Depth_SLOT.CLEAR_COLOR = vec3(1);						//Reversed Depth
 	//These should be set by RenderGraph!
-	Depth_SLOT.HEIGTH = 0; Depth_SLOT.WIDTH = 0; Depth_SLOT.RT_ID = 0;
+	Depth_SLOT.HEIGHT = 1080; Depth_SLOT.WIDTH = 1920; Depth_SLOT.RT_ID = 0;
 	Needed_RTSlots.push_back(Depth_SLOT);
 
 	Create_LineRendererMatInst();
@@ -81,9 +81,15 @@ void Main_DrawPass::Execute() {
 		LOG_STATUS(Before_RenderStatus);
 	}
 
+	//DRAW SPECIAL SHADERs (such as plane, sphere renderers etc)
+	for (unsigned int i = 0; i < RG_SpecialDrawCalls.size(); i++) {
+		GFXRENDERER->DrawSpecialShader((GFX_API::Material_Instance*)TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(RG_SpecialDrawCalls[i].ShaderInstance_ID)->DATA,
+			RG_SpecialDrawCalls[i].VERTEXCOUNT, RG_SpecialDrawCalls[i].OverridenUniforms);
+	}
+
 	//DRAW TRIANGLES
 	{
-		GFXRENDERER->Set_DepthTest(GFX_API::DEPTH_MODEs::DEPTH_READ_WRITE, GFX_API::DEPTH_TESTs::DEPTH_TEST_LESS);
+		GFXRENDERER->Set_DepthTest(GFX_API::DEPTH_MODEs::DEPTH_READ_WRITE, GFX_API::DEPTH_TESTs::DEPTH_TEST_LEQUAL);
 		GFXRENDERER->Set_CullingMode(GFX_API::CULL_MODE::CULL_OFF);
 
 		const GFX_API::DrawCall* DrawCall = nullptr;
@@ -104,7 +110,8 @@ void Main_DrawPass::Execute() {
 	
 	//DRAW LINES
 	{
-		GFXRENDERER->Set_DepthTest(GFX_API::DEPTH_MODEs::DEPTH_READ_WRITE, GFX_API::DEPTH_TESTs::DEPTH_TEST_LEQUAL);
+		if (shouldPC_DepthWrite) { GFXRENDERER->Set_DepthTest(GFX_API::DEPTH_MODEs::DEPTH_READ_WRITE, GFX_API::DEPTH_TESTs::DEPTH_TEST_LEQUAL); }
+		else { GFXRENDERER->Set_DepthTest(GFX_API::DEPTH_MODEs::DEPTH_READ_ONLY, GFX_API::DEPTH_TESTs::DEPTH_TEST_LEQUAL); }
 		GFXRENDERER->Set_CullingMode(GFX_API::CULL_MODE::CULL_OFF);
 		GFXRENDERER->Set_LineWidth(5.0f);
 		const GFX_API::PointLineDrawCall* PointLineDraw = nullptr;
@@ -127,6 +134,7 @@ void Main_DrawPass::Execute() {
 				GFXRENDERER->DrawLine(GFXContentManager->Find_PointBuffer_byBufferID(PointLineDraw->PointBuffer_ID));
 			}
 		}
+		if (!shouldPC_DepthWrite) { GFXRENDERER->Set_DepthTest(GFX_API::DEPTH_MODEs::DEPTH_READ_WRITE, GFX_API::DEPTH_TESTs::DEPTH_TEST_LEQUAL); }
 	}
 	
 

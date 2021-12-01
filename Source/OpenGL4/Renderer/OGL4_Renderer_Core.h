@@ -17,6 +17,7 @@ namespace OpenGL4 {
 		virtual void DrawTriangle(const GFX_API::GFX_Mesh* MESH) override;
 		virtual void DrawPoint(const GFX_API::GFX_Point* POINT) override;
 		virtual void DrawLine(const GFX_API::GFX_Point* POINT) override;
+		virtual void DrawSpecialShader(GFX_API::Material_Instance* MATINST, unsigned int VERTEXCOUNT, const std::vector<GFX_API::Material_Uniform>& OverridenUniforms) override;
 		virtual void Compute_Dispatch(const GFX_API::ComputeShader_Instance* CS, vec3 Dispatch_Groups) override;
 		//SOME OF THE BELOW FUNCTIONS SHOULD GO SOME OTHER SYSTEMS BECAUSE RENDERER WILL BE ONLY RESPONSIBLE FOR CONVERTING RENDERGRAPH'S CALLS TO REAL GL CALLS
 

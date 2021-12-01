@@ -15,7 +15,7 @@ using namespace TuranAPI;
 #include <string>
 
 namespace TuranEditor {
-	//Output Path should be Directory + Name like "C:/dev/Content/FirstTexture". Every Texture has .texturecont extension!
+	//Output Path should be Directory + Name like "D:/dev/Content/FirstTexture". Every Texture has .texturecont extension!
 	Resource_Identifier* Texture_Loader::Import_Texture(const char* PATH, const bool& flip_vertically, const GFX_API::Texture_Properties& Properties) {
 		GFX_API::TEXTURE_CHANNELs CHANNEL_TYPE = GFX_API::TEXTURE_CHANNELs::API_TEXTURE_RGB8UB;
 		int WIDTH, HEIGHT, CHANNELs;

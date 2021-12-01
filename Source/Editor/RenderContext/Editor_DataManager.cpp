@@ -5,23 +5,36 @@
 //To compile shader program!
 #include "GFX/GFX_Core.h"
 #include "Editor/FileSystem/ResourceTypes/ResourceTYPEs.h"
+#include "Editor\FileSystem\ResourceImporters\Model_Loader.h"
+#define LIGHTSBUFFER_DATASIZE 32
 
 using namespace GFX_API;
 
+static TuranEditor::Static_Model* DefaultSphereModel = nullptr;
+static Game_RenderGraph* RG = nullptr;
 
 namespace TuranEditor {
+	//Point Renderer
+	static unsigned int PointMatInst_NonShading = UINT32_MAX, PointMatInst_Shading = UINT32_MAX, PointMatTypeID = UINT32_MAX;
+	static GFX_API::VertexAttributeLayout PointRenderer_VertexAttrib;
+	vector<POINTRENDERER*> RenderDataManager::PointRenderers;
+
+	//Plane Renderer
+	static unsigned int PlaneMatInst = UINT32_MAX, PlaneMatTypeID = UINT32_MAX;
+	static GFX_API::VertexAttributeLayout PlaneRenderer_VertexAttrib;
+	std::vector<vec3*> PlaneRenderer_UniformDataDeletion;
+
+
 	GFX_API::VertexAttributeLayout RenderDataManager::PositionNormal_VertexAttrib, RenderDataManager::PositionOnly_VertexAttrib;
-	unsigned int RenderDataManager::ShadedPoint_MatInst = 0, RenderDataManager::NormalLine_MatInst = 0;
 	static Bitset WORLDOBJECT_IDs(100);
 	static unsigned int Create_OBJECTINDEX();
 	static void Delete_OBJECTINDEX(unsigned int INDEX);
 	unsigned int RenderDataManager::WORLDOBJECTs_GLOBALBUFFERID, RenderDataManager::MATINSTs_GLOBALBUFFERID, RenderDataManager::CAMERA_GLOBALBUFFERID, RenderDataManager::LIGHTs_GLOBALBUFFERID,
-		RenderDataManager::SurfaceMatType_ID, RenderDataManager::GeodesicDistancesBuffer_ID;
+		RenderDataManager::SurfaceMatType_ID;
 	Directional_Light* RenderDataManager::DIRECTIONALLIGHTs = new Directional_Light[MAX_DIRECTIONALLIGHTs];
-	Spot_Light* RenderDataManager::SPOTLIGHTs = new Spot_Light[MAX_SPOTLIGHTs];
-	Point_Light* RenderDataManager::POINTLIGHTs = new Point_Light[MAX_POINTLIGHTs];
-	unsigned int RenderDataManager::DIRECTIONALLIGHTs_COUNT = 0, RenderDataManager::SPOTLIGHTs_COUNT = 0, RenderDataManager::POINTLIGHTs_COUNT = 0, RenderDataManager::PointLineMaterialID = 0;
-	void* RenderDataManager::LIGHTsBUFFER_DATA = new bool[364], * RenderDataManager::GEODESICSBUFFERDATA = new bool[30002 * 4];
+	unsigned int RenderDataManager::DIRECTIONALLIGHTs_COUNT = 0;
+	
+	void* RenderDataManager::LIGHTsBUFFER_DATA = new bool[LIGHTSBUFFER_DATASIZE];
 	vec3 RenderDataManager::CameraPos(0, 0, -3), RenderDataManager::FrontVec(0, 0, 1)
 		, RenderDataManager::FirstObjectPosition(0,0,0), RenderDataManager::FirstObjectRotation(-90.0f, 0.0f, -90.0f);
 	mat4* RenderDataManager::CAMERABUFFER_DATA = new mat4[2],
@@ -51,49 +64,13 @@ namespace TuranEditor {
 			Object_Index.DATA = nullptr;
 			Surface_MatType->UNIFORMs.push_back(Object_Index);
 		}
-		//DIFFUSETEXTURE uniform
+		//isPhongShadingActive uniform
 		{
-			Texture_Access DIFFUSE_TEXTURE;
-			DIFFUSE_TEXTURE.DIMENSIONs = TEXTURE_DIMENSIONs::TEXTURE_2D;
-			DIFFUSE_TEXTURE.CHANNELs = TEXTURE_CHANNELs::API_TEXTURE_RGB8UB;
-			DIFFUSE_TEXTURE.OP_TYPE = OPERATION_TYPE::READ_ONLY;
-			DIFFUSE_TEXTURE.ACCESS_TYPE = TEXTURE_ACCESS::SAMPLER_OPERATION;
-			DIFFUSE_TEXTURE.BINDING_POINT = 0;
-			DIFFUSE_TEXTURE.TEXTURE_ID = 0;
-			Surface_MatType->TEXTUREs.push_back(DIFFUSE_TEXTURE);
-		}
-		//NORMALSTEXTURE uniform
-		{
-			Texture_Access NORMALSTEXTURE;
-			NORMALSTEXTURE.DIMENSIONs = TEXTURE_DIMENSIONs::TEXTURE_2D;
-			NORMALSTEXTURE.CHANNELs = TEXTURE_CHANNELs::API_TEXTURE_RGB8UB;
-			NORMALSTEXTURE.OP_TYPE = OPERATION_TYPE::READ_ONLY;
-			NORMALSTEXTURE.ACCESS_TYPE = TEXTURE_ACCESS::SAMPLER_OPERATION;
-			NORMALSTEXTURE.BINDING_POINT = 1;
-			NORMALSTEXTURE.TEXTURE_ID = 0;
-			Surface_MatType->TEXTUREs.push_back(NORMALSTEXTURE);
-		}
-		//SPECULARTEXTURE uniform
-		{
-			Texture_Access SPECULARTEXTURE;
-			SPECULARTEXTURE.DIMENSIONs = TEXTURE_DIMENSIONs::TEXTURE_2D;
-			SPECULARTEXTURE.CHANNELs = TEXTURE_CHANNELs::API_TEXTURE_RGB8UB;
-			SPECULARTEXTURE.OP_TYPE = OPERATION_TYPE::READ_ONLY;
-			SPECULARTEXTURE.ACCESS_TYPE = TEXTURE_ACCESS::SAMPLER_OPERATION;
-			SPECULARTEXTURE.BINDING_POINT = 2;
-			SPECULARTEXTURE.TEXTURE_ID = 0;
-			Surface_MatType->TEXTUREs.push_back(SPECULARTEXTURE);
-		}
-		//OPACITYTEXTURE uniform
-		{
-			Texture_Access OPACITYTEXTURE;
-			OPACITYTEXTURE.DIMENSIONs = TEXTURE_DIMENSIONs::TEXTURE_2D;
-			OPACITYTEXTURE.CHANNELs = TEXTURE_CHANNELs::API_TEXTURE_RGB8UB;
-			OPACITYTEXTURE.OP_TYPE = OPERATION_TYPE::READ_ONLY;
-			OPACITYTEXTURE.ACCESS_TYPE = TEXTURE_ACCESS::SAMPLER_OPERATION;
-			OPACITYTEXTURE.BINDING_POINT = 3;
-			OPACITYTEXTURE.TEXTURE_ID = 0;
-			Surface_MatType->TEXTUREs.push_back(OPACITYTEXTURE);
+			Material_Uniform uniform_isphongshadingactive;
+			uniform_isphongshadingactive.VARIABLE_NAME = "isPhongShadingActive";
+			uniform_isphongshadingactive.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_UINT32;
+			uniform_isphongshadingactive.DATA = nullptr;
+			Surface_MatType->UNIFORMs.push_back(uniform_isphongshadingactive);
 		}
 		
 
@@ -118,17 +95,8 @@ namespace TuranEditor {
 		}
 		//Lights Buffer
 		{
-			memcpy(RenderDataManager::LIGHTsBUFFER_DATA, RenderDataManager::DIRECTIONALLIGHTs, 32);
-			memcpy((char*)RenderDataManager::LIGHTsBUFFER_DATA + 32, RenderDataManager::POINTLIGHTs, 160);
-			memcpy((char*)RenderDataManager::LIGHTsBUFFER_DATA + 192, RenderDataManager::SPOTLIGHTs, 160);
-			memcpy((char*)RenderDataManager::LIGHTsBUFFER_DATA + 352, &RenderDataManager::DIRECTIONALLIGHTs_COUNT, 4);
-			memcpy((char*)RenderDataManager::LIGHTsBUFFER_DATA + 356, &RenderDataManager::POINTLIGHTs_COUNT, 4);
-			memcpy((char*)RenderDataManager::LIGHTsBUFFER_DATA + 360, &RenderDataManager::SPOTLIGHTs_COUNT, 4);
-			RenderDataManager::LIGHTs_GLOBALBUFFERID = GFXContentManager->Create_GlobalBuffer("LIGHTs", RenderDataManager::LIGHTsBUFFER_DATA, 364, GFX_API::BUFFER_VISIBILITY::CPUREADWRITE_GPUREADWRITE);
-		}
-		//Geodesic Distance Buffer
-		{
-			RenderDataManager::GeodesicDistancesBuffer_ID = GFXContentManager->Create_GlobalBuffer("GEOs", RenderDataManager::GEODESICSBUFFERDATA, 30002 * 4, GFX_API::BUFFER_VISIBILITY::CPUREADWRITE_GPUREADWRITE);
+			memcpy((char*)RenderDataManager::LIGHTsBUFFER_DATA, RenderDataManager::DIRECTIONALLIGHTs, 32);
+			RenderDataManager::LIGHTs_GLOBALBUFFERID = GFXContentManager->Create_GlobalBuffer("LIGHTs", RenderDataManager::LIGHTsBUFFER_DATA, LIGHTSBUFFER_DATASIZE, GFX_API::BUFFER_VISIBILITY::CPUREADWRITE_GPUREADWRITE);
 		}
 
 		//GLOBAL BUFFER BINDING
@@ -147,11 +115,6 @@ namespace TuranEditor {
 			LIGHTs_ACCESS.ACCESS_TYPE = OPERATION_TYPE::READ_ONLY;
 			LIGHTs_ACCESS.BUFFER_ID = RenderDataManager::LIGHTs_GLOBALBUFFERID;
 			Surface_MatType->GLOBALBUFFERs.push_back(LIGHTs_ACCESS);
-
-			GlobalBuffer_Access GEODESICS_ACCESS;
-			LIGHTs_ACCESS.ACCESS_TYPE = OPERATION_TYPE::READ_ONLY;
-			LIGHTs_ACCESS.BUFFER_ID = RenderDataManager::GeodesicDistancesBuffer_ID;
-			Surface_MatType->GLOBALBUFFERs.push_back(LIGHTs_ACCESS);
 		}
 
 
@@ -159,7 +122,7 @@ namespace TuranEditor {
 		unsigned int VSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Vertex Shader!\n");
-			string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("C:/dev/GeometryProcessing/Content/SurfaceUberShader.vert");
+			string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/SurfaceUberShader.vert");
 			ShaderSource_Resource* VertexShader = new ShaderSource_Resource;
 			VertexShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			VertexShader->STAGE = GFX_API::SHADER_STAGE::VERTEXSTAGE;
@@ -179,7 +142,7 @@ namespace TuranEditor {
 		unsigned int FSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Fragment Shader!\n");
-			string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("C:/dev/GeometryProcessing/Content/SurfaceUberShader.frag");
+			string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/SurfaceUberShader.frag");
 			ShaderSource_Resource* FragmentShader = new ShaderSource_Resource;
 			FragmentShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			FragmentShader->STAGE = GFX_API::SHADER_STAGE::FRAGMENTSTAGE;
@@ -212,23 +175,17 @@ namespace TuranEditor {
 	void Load_PointLineMaterialType() {
 		Material_Type* PointLineMaterial = new Material_Type;
 
-		//IS_LINE uniform
+		//PhongShading uniform
 		{
-			Material_Uniform Object_Index;
-			Object_Index.VARIABLE_NAME = "ShowNormal";
-			Object_Index.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_UINT32;
-			Object_Index.DATA = nullptr;
-			PointLineMaterial->UNIFORMs.push_back(Object_Index);
+			Material_Uniform phong_active;
+			phong_active.VARIABLE_NAME = "isPhongShadingActive";
+			phong_active.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_UINT32;
+			phong_active.DATA = nullptr;
+			PointLineMaterial->UNIFORMs.push_back(phong_active);
 		}
 
 		//GLOBAL BUFFER BINDING
 		{
-			GlobalBuffer_Access WORLDOBJECTs_ACCESS;
-			WORLDOBJECTs_ACCESS.ACCESS_TYPE = OPERATION_TYPE::READ_ONLY;
-			WORLDOBJECTs_ACCESS.BUFFER_ID = RenderDataManager::WORLDOBJECTs_GLOBALBUFFERID;
-			PointLineMaterial->GLOBALBUFFERs.push_back(WORLDOBJECTs_ACCESS);
-
-
 			GlobalBuffer_Access CAMERA_ACCESS;
 			CAMERA_ACCESS.ACCESS_TYPE = OPERATION_TYPE::READ_ONLY;
 			CAMERA_ACCESS.BUFFER_ID = RenderDataManager::CAMERA_GLOBALBUFFERID;
@@ -244,7 +201,7 @@ namespace TuranEditor {
 		unsigned int VSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Vertex Shader!\n");
-			string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("C:/dev/GeometryProcessing/Content/PointRendererShader.vert");
+			string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PointRendererShader.vert");
 			ShaderSource_Resource* VertexShader = new ShaderSource_Resource;
 			VertexShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			VertexShader->STAGE = GFX_API::SHADER_STAGE::VERTEXSTAGE;
@@ -259,12 +216,12 @@ namespace TuranEditor {
 			GFXContentManager->Compile_ShaderSource(VertexShader, RESOURCE->ID, &compilation_status);
 			VSSOURCE_ID = RESOURCE->ID;
 		}
-
+		/*
 		//Load Geometry Shader
 		unsigned int GSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Geometry Shader!\n");
-			string* GEOMETRYSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("C:/dev/GeometryProcessing/Content/PointRendererShader.gs");
+			string* GEOMETRYSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PointRendererShader.gs");
 			ShaderSource_Resource* GeometryShader = new ShaderSource_Resource;
 			GeometryShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			GeometryShader->STAGE = GFX_API::SHADER_STAGE::GEOMETRYSTAGE;
@@ -278,13 +235,13 @@ namespace TuranEditor {
 			//Add_anAsset_toAssetList gave an ID, so we can compile it now!
 			GFXContentManager->Compile_ShaderSource(GeometryShader, RESOURCE->ID, &compilation_status);
 			GSSOURCE_ID = RESOURCE->ID;
-		}
+		}*/
 
 		//Load Fragment Shader
 		unsigned int FSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Fragment Shader!\n");
-			string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("C:/dev/GeometryProcessing/Content/PointRendererShader.frag");
+			string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PointRendererShader.frag");
 			ShaderSource_Resource* FragmentShader = new ShaderSource_Resource;
 			FragmentShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			FragmentShader->STAGE = GFX_API::SHADER_STAGE::FRAGMENTSTAGE;
@@ -301,7 +258,7 @@ namespace TuranEditor {
 		}
 
 		PointLineMaterial->VERTEXSOURCE_ID = VSSOURCE_ID;
-		PointLineMaterial->GEOMETRYSOURCE_ID = GSSOURCE_ID;
+		//PointLineMaterial->GEOMETRYSOURCE_ID = GSSOURCE_ID;
 		PointLineMaterial->FRAGMENTSOURCE_ID = FSSOURCE_ID;
 
 		//Resource Compilation
@@ -312,10 +269,10 @@ namespace TuranEditor {
 		string compilation_status;		//I don't care, because it will be compiled anyway!
 		//Add_anAsset_toAssetList gave an ID to the Material Type, link it now!
 		GFXContentManager->Link_MaterialType(PointLineMaterial, RESOURCE->ID, &compilation_status);
-		RenderDataManager::PointLineMaterialID = RESOURCE->ID;
+		PointMatTypeID = RESOURCE->ID;
 	}
 
-	unsigned int RenderDataManager::Create_SurfaceMaterialInstance(SURFACEMAT_PROPERTIES MaterialInstance_Properties, unsigned int* OBJECT_WORLDID) {
+	unsigned int RenderDataManager::Create_SurfaceMaterialInstance(SURFACEMAT_PROPERTIES MaterialInstance_Properties, unsigned int* OBJECT_WORLDID, unsigned int isUsingPhongShading) {
 		Material_Instance* MATINST = new Material_Instance;
 		MATINST->Material_Type = SurfaceMatType_ID;
 		
@@ -333,6 +290,9 @@ namespace TuranEditor {
 			for (unsigned int i = 0; i < MATINST->UNIFORM_LIST.size(); i++) {
 				if (MATINST->UNIFORM_LIST[i].VARIABLE_NAME == "OBJECT_INDEX") {
 					MATINST->UNIFORM_LIST[i].DATA = OBJECT_WORLDID;
+				}
+				if (MATINST->UNIFORM_LIST[i].VARIABLE_NAME == "isPhongShadingActive") {
+					MATINST->UNIFORM_LIST[i].DATA = new unsigned int(isUsingPhongShading);
 				}
 			}
 			for (unsigned int i = 0; i < MATINST->TEXTURE_LIST.size(); i++) {
@@ -372,44 +332,86 @@ namespace TuranEditor {
 		EDITOR_FILESYSTEM->Add_anAsset_toAssetList(RESOURCE);
 		return RESOURCE->ID;
 	}
+	vector<vec3> RenderDataManager::Create_Sphere(glm::vec3 Center, float radius) {
+		vector<vec3> SphereVertexes(DefaultSphereModel->MESHes[0]->INDICES_NUMBER, vec3(0.0));
+		for (unsigned int i = 0; i < SphereVertexes.size(); i++) {
+			SphereVertexes[i] = Center + (((vec3*)DefaultSphereModel->MESHes[0]->VERTEX_DATA)[DefaultSphereModel->MESHes[0]->INDEX_DATA[i]] * vec3(radius));
+		}
+		return SphereVertexes;
+	}
+
+	unsigned int RenderDataManager::Create_Plane(glm::vec3 Center, glm::vec3 Tangent, glm::vec3 Bitangent, glm::vec2 Size) {
+		glm::vec3 PlaneVertexes[6];
+		PlaneVertexes[0] = Center + (Bitangent * glm::vec3(Size.x / 2.0f)) - (Tangent * glm::vec3(Size.y / 2.0f));
+		PlaneVertexes[1] = Center + (Bitangent * glm::vec3(Size.x / 2.0f)) + (Tangent * glm::vec3(Size.y / 2.0f));
+		PlaneVertexes[2] = Center - (Bitangent * glm::vec3(Size.x / 2.0f)) + (Tangent * glm::vec3(Size.y / 2.0f));
+		PlaneVertexes[3] = Center - (Bitangent * glm::vec3(Size.x / 2.0f)) + (Tangent * glm::vec3(Size.y / 2.0f));
+		PlaneVertexes[4] = Center + (Bitangent * glm::vec3(Size.x / 2.0f)) - (Tangent * glm::vec3(Size.y / 2.0f));
+		PlaneVertexes[5] = Center - (Bitangent * glm::vec3(Size.x / 2.0f)) - (Tangent * glm::vec3(Size.y / 2.0f));
+		return GFXContentManager->Upload_MeshBuffer(PositionOnly_VertexAttrib, &PlaneVertexes, 12 * 6, 6, nullptr, 0);
+	}
+
 
 	void RenderDataManager::Update_GPUResources() {
-		//Camera Global Buffer Update
+		//Update Global Buffers
 		{
-			mat4 proj_mat;
-			proj_mat = perspective(radians(45.0f), float(1920.0f / 1080.0f), 0.001f, 10000.0f);
-			mat4 view_mat;
-			view_mat = lookAt(CameraPos, FrontVec + CameraPos, vec3(0, 1, 0));
-			CAMERABUFFER_DATA[0] = proj_mat;
-			CAMERABUFFER_DATA[1] = view_mat;
-			GFXContentManager->Upload_GlobalBuffer(CAMERA_GLOBALBUFFERID);
+			//Camera Global Buffer Update
+			{
+				mat4 proj_mat;
+				proj_mat = perspective(radians(45.0f), float(1920.0f / 1080.0f), 0.001f, 10000.0f);
+				mat4 view_mat;
+				view_mat = lookAt(CameraPos, FrontVec + CameraPos, vec3(0, 1, 0));
+				CAMERABUFFER_DATA[0] = proj_mat;
+				CAMERABUFFER_DATA[1] = view_mat;
+				GFXContentManager->Upload_GlobalBuffer(CAMERA_GLOBALBUFFERID);
+			}
+			//World Objects Matrices Global Buffer Update
+			{
+				WORLDOBJECTs_BUFFERDATA[0] = {};
+				WORLDOBJECTs_BUFFERDATA[0] = glm::translate(WORLDOBJECTs_BUFFERDATA[0], FirstObjectPosition);
+				WORLDOBJECTs_BUFFERDATA[0] = glm::rotate(WORLDOBJECTs_BUFFERDATA[0], radians(FirstObjectRotation.x), vec3(1, 0, 0));
+				WORLDOBJECTs_BUFFERDATA[0] = glm::rotate(WORLDOBJECTs_BUFFERDATA[0], radians(FirstObjectRotation.y), vec3(0, 1, 0));
+				WORLDOBJECTs_BUFFERDATA[0] = glm::rotate(WORLDOBJECTs_BUFFERDATA[0], radians(FirstObjectRotation.z), vec3(0, 0, 1));
+				GFXContentManager->Upload_GlobalBuffer(WORLDOBJECTs_GLOBALBUFFERID);
+			}
+			//Lights Global Buffer Update
+			{
+				DIRECTIONALLIGHTs[0].DIRECTION = normalize(DIRECTIONALLIGHTs[0].DIRECTION);
+				memcpy((char*)LIGHTsBUFFER_DATA, DIRECTIONALLIGHTs, 32);
+				GFXContentManager->Upload_GlobalBuffer(LIGHTs_GLOBALBUFFERID);
+			}
 		}
-		//World Objects Matrices Global Buffer Update
-		{
-			WORLDOBJECTs_BUFFERDATA[0] = {};
-			WORLDOBJECTs_BUFFERDATA[0] = glm::translate(WORLDOBJECTs_BUFFERDATA[0], FirstObjectPosition);
-			WORLDOBJECTs_BUFFERDATA[0] = glm::rotate(WORLDOBJECTs_BUFFERDATA[0], radians(FirstObjectRotation.x), vec3(1, 0, 0));
-			WORLDOBJECTs_BUFFERDATA[0] = glm::rotate(WORLDOBJECTs_BUFFERDATA[0], radians(FirstObjectRotation.y), vec3(0, 1, 0));
-			WORLDOBJECTs_BUFFERDATA[0] = glm::rotate(WORLDOBJECTs_BUFFERDATA[0], radians(FirstObjectRotation.z), vec3(0, 0, 1));
-			GFXContentManager->Upload_GlobalBuffer(WORLDOBJECTs_GLOBALBUFFERID);
+
+		//Update PointRenderer Buffers
+		for (unsigned int i = 0; i < PointRenderers.size(); i++) {
+			if (PointRenderers[i]->isResourcesUpdated) {
+				bool* data = new bool[PointRenderers[i]->PositionXYZs.size() * 28];
+				memcpy(data, PointRenderers[i]->PositionXYZs.data(), PointRenderers[i]->PositionXYZs.size() * 12);
+				memcpy(data + (PointRenderers[i]->PositionXYZs.size() * 12), PointRenderers[i]->PointCOLORRGBAs.data(), PointRenderers[i]->PositionXYZs.size() * 16);
+				GFXContentManager->Upload_PointBuffer(PointRenderers[i]->GPUHandle, data);
+				delete[] data;
+				PointRenderers[i]->isResourcesUpdated = false;
+			}
 		}
-		//Lights Global Buffer Update
-		{
-			memcpy(LIGHTsBUFFER_DATA, DIRECTIONALLIGHTs, 32);
-			memcpy((char*)LIGHTsBUFFER_DATA + 32, POINTLIGHTs, 160);
-			memcpy((char*)LIGHTsBUFFER_DATA + 192, SPOTLIGHTs, 160);
-			memcpy((char*)LIGHTsBUFFER_DATA + 352, &DIRECTIONALLIGHTs_COUNT, 4);
-			memcpy((char*)LIGHTsBUFFER_DATA + 356, &POINTLIGHTs_COUNT, 4);
-			memcpy((char*)LIGHTsBUFFER_DATA + 360, &SPOTLIGHTs_COUNT, 4);
-			GFXContentManager->Upload_GlobalBuffer(LIGHTs_GLOBALBUFFERID);
+
+
+		//Draw calls of active PointRenderers
+		for(unsigned int i = 0; i < PointRenderers.size(); i++){
+			if (PointRenderers[i]->shouldRenderThisFrame) {
+				PointLineDrawCall dc;
+				dc.Draw_asPoint = true;
+				dc.PointBuffer_ID = PointRenderers[i]->GPUHandle;
+				dc.ShaderInstance_ID = PointRenderers[i]->isPhongShadingActive ? PointMatInst_Shading : PointMatInst_NonShading;
+				PointRenderers[i]->shouldRenderThisFrame = false;
+				RG->Register_PointDrawCall(dc);
+			}
 		}
+		
+
 	}
 
-	void RenderDataManager::UpdateGeodesicDistances(const void* DATA, unsigned int DATASIZE) {
-		GFXContentManager->Upload_GlobalBuffer(GeodesicDistancesBuffer_ID, DATA, DATASIZE);
-	}
 
-	//Create Vertex Attribute
+	//Point Cloud, Surface Reconstruction and Normal Estimation Study
 	void CreateVertexAttributeLayouts() {
 		{
 			RenderDataManager::PositionNormal_VertexAttrib.Attributes.push_back(GFX_API::VertexAttribute());
@@ -418,7 +420,7 @@ namespace TuranEditor {
 			PosAttrib.DATATYPE = GFX_API::DATA_TYPE::VAR_VEC3;
 			PosAttrib.Index = 0;
 			PosAttrib.Start_Offset = 0;
-			PosAttrib.Stride = 3;
+			PosAttrib.Stride = 0;
 
 			RenderDataManager::PositionNormal_VertexAttrib.Attributes.push_back(GFX_API::VertexAttribute());
 			GFX_API::VertexAttribute& NorAttrib = RenderDataManager::PositionNormal_VertexAttrib.Attributes[1];
@@ -426,7 +428,7 @@ namespace TuranEditor {
 			NorAttrib.DATATYPE = GFX_API::DATA_TYPE::VAR_VEC3;
 			NorAttrib.Index = 1;
 			NorAttrib.Start_Offset = 0;
-			NorAttrib.Stride = 3;
+			NorAttrib.Stride = 0;
 
 			RenderDataManager::PositionOnly_VertexAttrib.Attributes.push_back(GFX_API::VertexAttribute());
 			GFX_API::VertexAttribute& PosAttrib2 = RenderDataManager::PositionOnly_VertexAttrib.Attributes[0];
@@ -438,59 +440,221 @@ namespace TuranEditor {
 		}
 		RenderDataManager::PositionNormal_VertexAttrib.Calculate_SizeperVertex();
 		RenderDataManager::PositionOnly_VertexAttrib.Calculate_SizeperVertex();
-	}
 
-	void CreateGeometryProcessingMaterials() {
-		//Create Line Material Instance
+		//Point Renderer Vertex Attribute Layout
 		{
-			GFX_API::Material_Instance* LineMatInstData = new GFX_API::Material_Instance;
-			LineMatInstData->Material_Type = TuranEditor::RenderDataManager::PointLineMaterialID;
+			PointRenderer_VertexAttrib.Attributes.push_back(GFX_API::VertexAttribute());
+			GFX_API::VertexAttribute& PosAttrib = PointRenderer_VertexAttrib.Attributes[0];
+			PosAttrib.AttributeName = "Point_POS";
+			PosAttrib.DATATYPE = GFX_API::DATA_TYPE::VAR_VEC3;
+			PosAttrib.Index = 0;
+			PosAttrib.Start_Offset = 0;
+			PosAttrib.Stride = 3;
+
+			PointRenderer_VertexAttrib.Attributes.push_back(GFX_API::VertexAttribute());
+			GFX_API::VertexAttribute& ColorAttrib = PointRenderer_VertexAttrib.Attributes[1];
+			ColorAttrib.AttributeName = "Point_COLOR";
+			ColorAttrib.DATATYPE = GFX_API::DATA_TYPE::VAR_VEC4;
+			ColorAttrib.Index = 1;
+			ColorAttrib.Start_Offset = 0;
+			ColorAttrib.Stride = 4;
+		}
+		PointRenderer_VertexAttrib.Calculate_SizeperVertex();
+	}
+	void CreateGeometryProcessingMaterials() {
+		//Create PointMatInst_NonShading
+		{
+			GFX_API::Material_Instance* PointMatInstRED = new GFX_API::Material_Instance;
+			PointMatInstRED->Material_Type = PointMatTypeID;
 
 			//Uniform Preparing
-			GFX_API::Material_Type* POINTLINE_MATTYPE = (GFX_API::Material_Type*)TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(TuranEditor::RenderDataManager::PointLineMaterialID)->DATA;
-			LineMatInstData->UNIFORM_LIST = POINTLINE_MATTYPE->UNIFORMs;
-			for (unsigned int i = 0; i < LineMatInstData->UNIFORM_LIST.size(); i++) {
-				GFX_API::Material_Uniform& UNIFORM = LineMatInstData->UNIFORM_LIST[i];
-				if (UNIFORM.VARIABLE_NAME == "ShowNormal") {
-					UNIFORM.DATA = new unsigned int(1);
+			GFX_API::Material_Type* POINTLINE_MATTYPE = (GFX_API::Material_Type*)TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(PointMatTypeID)->DATA;
+			PointMatInstRED->UNIFORM_LIST = POINTLINE_MATTYPE->UNIFORMs;
+			for (unsigned int i = 0; i < PointMatInstRED->UNIFORM_LIST.size(); i++) {
+				if (PointMatInstRED->UNIFORM_LIST[i].VARIABLE_NAME == "isPhongShadingActive") {
+					PointMatInstRED->UNIFORM_LIST[i].DATA = new unsigned int(false);
 				}
 			}
 			TuranEditor::Resource_Identifier* LineMatInstResource = new TuranEditor::Resource_Identifier;
-			LineMatInstResource->TYPE = TuranEditor::RESOURCETYPEs::GFXAPI_SHADERSOURCE;
-			LineMatInstResource->DATA = LineMatInstData;
+			LineMatInstResource->TYPE = TuranEditor::RESOURCETYPEs::GFXAPI_MATINST;
+			LineMatInstResource->DATA = PointMatInstRED;
 			TuranEditor::EDITOR_FILESYSTEM->Add_anAsset_toAssetList(LineMatInstResource);
-			RenderDataManager::NormalLine_MatInst = LineMatInstResource->ID;
+			PointMatInst_NonShading = LineMatInstResource->ID;
 		}
-
-		//Create Shaded Point Material Instance
+		//Create PointMatInst_Shading
 		{
-			GFX_API::Material_Instance* ShadedPointMatInstData = new GFX_API::Material_Instance;
-			ShadedPointMatInstData->Material_Type = TuranEditor::RenderDataManager::PointLineMaterialID;
+			GFX_API::Material_Instance* PointMatInst_shading = new GFX_API::Material_Instance;
+			PointMatInst_shading->Material_Type = PointMatTypeID;
 
 			//Uniform Preparing
-			GFX_API::Material_Type* POINTLINE_MATTYPE = (GFX_API::Material_Type*)TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(TuranEditor::RenderDataManager::PointLineMaterialID)->DATA;
-			ShadedPointMatInstData->UNIFORM_LIST = POINTLINE_MATTYPE->UNIFORMs;
-			for (unsigned int i = 0; i < ShadedPointMatInstData->UNIFORM_LIST.size(); i++) {
-				GFX_API::Material_Uniform& UNIFORM = ShadedPointMatInstData->UNIFORM_LIST[i];
-				if (UNIFORM.VARIABLE_NAME == "ShowNormal") {
-					UNIFORM.DATA = new unsigned int(0);
+			GFX_API::Material_Type* POINTLINE_MATTYPE = (GFX_API::Material_Type*)TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(PointMatTypeID)->DATA;
+			PointMatInst_shading->UNIFORM_LIST = POINTLINE_MATTYPE->UNIFORMs;
+			for (unsigned int i = 0; i < PointMatInst_shading->UNIFORM_LIST.size(); i++) {
+				if (PointMatInst_shading->UNIFORM_LIST[i].VARIABLE_NAME == "isPhongShadingActive") {
+					PointMatInst_shading->UNIFORM_LIST[i].DATA = new unsigned int(true);
 				}
 			}
-			TuranEditor::Resource_Identifier* shadedPointMatInstResource = new TuranEditor::Resource_Identifier;
-			shadedPointMatInstResource->TYPE = TuranEditor::RESOURCETYPEs::GFXAPI_SHADERSOURCE;
-			shadedPointMatInstResource->DATA = ShadedPointMatInstData;
-			TuranEditor::EDITOR_FILESYSTEM->Add_anAsset_toAssetList(shadedPointMatInstResource);
-			RenderDataManager::ShadedPoint_MatInst = shadedPointMatInstResource->ID;
+			TuranEditor::Resource_Identifier* LineMatInstResource = new TuranEditor::Resource_Identifier;
+			LineMatInstResource->TYPE = TuranEditor::RESOURCETYPEs::GFXAPI_MATINST;
+			LineMatInstResource->DATA = PointMatInst_shading;
+			TuranEditor::EDITOR_FILESYSTEM->Add_anAsset_toAssetList(LineMatInstResource);
+			PointMatInst_Shading = LineMatInstResource->ID;
+		}
+
+		//Create PlaneMatType and PlaneMatInst to use in PlaneSpecialDrawCalls
+		{
+			GFX_API::Material_Type* PlaneMatTYPE = new GFX_API::Material_Type;
+
+			//PlaneColor uniform
+			{
+				Material_Uniform PlaneColor;
+				PlaneColor.VARIABLE_NAME = "PlaneColor";
+				PlaneColor.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_VEC3;
+				PlaneColor.DATA = nullptr;
+				PlaneMatTYPE->UNIFORMs.push_back(PlaneColor);
+
+				Material_Uniform Vertex0;
+				PlaneColor.VARIABLE_NAME = "Vertex0";
+				PlaneColor.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_VEC3;
+				PlaneColor.DATA = nullptr;
+				PlaneMatTYPE->UNIFORMs.push_back(Vertex0);
+
+				Material_Uniform Vertex1;
+				PlaneColor.VARIABLE_NAME = "Vertex1";
+				PlaneColor.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_VEC3;
+				PlaneColor.DATA = nullptr;
+				PlaneMatTYPE->UNIFORMs.push_back(Vertex1);
+
+				Material_Uniform Vertex2;
+				PlaneColor.VARIABLE_NAME = "Vertex2";
+				PlaneColor.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_VEC3;
+				PlaneColor.DATA = nullptr;
+				PlaneMatTYPE->UNIFORMs.push_back(Vertex2);
+
+				Material_Uniform Vertex3;
+				PlaneColor.VARIABLE_NAME = "Vertex3";
+				PlaneColor.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_VEC3;
+				PlaneColor.DATA = nullptr;
+				PlaneMatTYPE->UNIFORMs.push_back(Vertex3);
+
+				Material_Uniform Vertex4;
+				PlaneColor.VARIABLE_NAME = "Vertex4";
+				PlaneColor.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_VEC3;
+				PlaneColor.DATA = nullptr;
+				PlaneMatTYPE->UNIFORMs.push_back(Vertex4);
+
+				Material_Uniform Vertex5;
+				PlaneColor.VARIABLE_NAME = "Vertex5";
+				PlaneColor.VARIABLE_TYPE = GFX_API::DATA_TYPE::VAR_VEC3;
+				PlaneColor.DATA = nullptr;
+				PlaneMatTYPE->UNIFORMs.push_back(Vertex5);
+			}
+
+			//Load Vertex Shader
+			unsigned int VSSOURCE_ID = 0;
+			{
+				LOG_STATUS("Loading Vertex Shader!\n");
+				string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PlaneRendererShader.vert");
+				ShaderSource_Resource* VertexShader = new ShaderSource_Resource;
+				VertexShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
+				VertexShader->STAGE = GFX_API::SHADER_STAGE::VERTEXSTAGE;
+				VertexShader->SOURCE_CODE = *VERTEXSHADER_SOURCE;
+
+				Resource_Identifier* RESOURCE = new Resource_Identifier;
+				RESOURCE->TYPE = RESOURCETYPEs::GFXAPI_SHADERSOURCE;
+				RESOURCE->DATA = VertexShader;
+				EDITOR_FILESYSTEM->Add_anAsset_toAssetList(RESOURCE);
+				string compilation_status;
+				//Add_anAsset_toAssetList gave an ID, so we can compile it now!
+				GFXContentManager->Compile_ShaderSource(VertexShader, RESOURCE->ID, &compilation_status);
+				VSSOURCE_ID = RESOURCE->ID;
+			}
+
+			//Load Fragment Shader
+			unsigned int FSSOURCE_ID = 0;
+			{
+				LOG_STATUS("Loading Fragment Shader!\n");
+				string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PlaneRendererShader.frag");
+				ShaderSource_Resource* FragmentShader = new ShaderSource_Resource;
+				FragmentShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
+				FragmentShader->STAGE = GFX_API::SHADER_STAGE::FRAGMENTSTAGE;
+				FragmentShader->SOURCE_CODE = *FRAGMENTSHADER_SOURCE;
+
+				Resource_Identifier* RESOURCE = new Resource_Identifier;
+				RESOURCE->TYPE = RESOURCETYPEs::GFXAPI_SHADERSOURCE;
+				RESOURCE->DATA = FragmentShader;
+				EDITOR_FILESYSTEM->Add_anAsset_toAssetList(RESOURCE);
+				string compilation_status;
+				//Add_anAsset_toAssetList gave an ID, so we can compile it now!
+				GFXContentManager->Compile_ShaderSource(FragmentShader, RESOURCE->ID, &compilation_status);
+				FSSOURCE_ID = RESOURCE->ID;
+			}
+
+			PlaneMatTYPE->VERTEXSOURCE_ID = VSSOURCE_ID;
+			//PointLineMaterial->GEOMETRYSOURCE_ID = GSSOURCE_ID;
+			PlaneMatTYPE->FRAGMENTSOURCE_ID = FSSOURCE_ID;
+
+			//Resource Compilation
+			Resource_Identifier* RESOURCE = new Resource_Identifier;
+			RESOURCE->TYPE = RESOURCETYPEs::GFXAPI_MATTYPE;
+			RESOURCE->DATA = PlaneMatTYPE;
+			EDITOR_FILESYSTEM->Add_anAsset_toAssetList(RESOURCE);
+			string compilation_status;		//I don't care, because it will be compiled anyway!
+			//Add_anAsset_toAssetList gave an ID to the Material Type, link it now!
+			GFXContentManager->Link_MaterialType(PlaneMatTYPE, RESOURCE->ID, &compilation_status);
+			PlaneMatTypeID = RESOURCE->ID;
+
+
+
+			GFX_API::Material_Instance* PlaneMatINST = new GFX_API::Material_Instance;
+			PlaneMatINST->Material_Type = PlaneMatInst;
+			
+			//Uniform Preparing
+			PlaneMatINST->UNIFORM_LIST = PlaneMatTYPE->UNIFORMs;
+			TuranEditor::Resource_Identifier* PlaneMatINSTRESOURCE = new TuranEditor::Resource_Identifier;
+			PlaneMatINSTRESOURCE->TYPE = TuranEditor::RESOURCETYPEs::GFXAPI_SHADERSOURCE;
+			PlaneMatINSTRESOURCE->DATA = PlaneMatINST;
+			TuranEditor::EDITOR_FILESYSTEM->Add_anAsset_toAssetList(PlaneMatINSTRESOURCE);
+			PlaneMatInst = PlaneMatINSTRESOURCE->ID;
+		}
+
+	}
+	POINTRENDERER* RenderDataManager::Create_PointRenderer(unsigned int PointCount) {
+		PointRenderers.push_back(new POINTRENDERER(PointCount));
+		return PointRenderers[PointRenderers.size() - 1];
+	}
+	void RenderDataManager::DestroyPointRenderer(POINTRENDERER* pointrenderer) {
+		for (unsigned int i = 0; i < PointRenderers.size(); i++) {
+			if (pointrenderer == PointRenderers[i]) {
+				PointRenderers.erase(PointRenderers.begin() + i);
+				delete pointrenderer;
+			}
 		}
 	}
+	GFX_API::SpecialDrawCall RenderDataManager::Create_PlaneSpecialDrawCall(vec3 Center, vec3 Tangent, vec3 Bitangent, vec2 Size, vec3 COLOR) {
+		return GFX_API::SpecialDrawCall();
+	}
+	GFX_API::SpecialDrawCall RenderDataManager::Create_BoundingBoxSpecialDrawCall(vec3 BoundingMin, vec3 BoundingMax) {
+		return GFX_API::SpecialDrawCall();
+	}
 
-	void RenderDataManager::Start_RenderingDataManagement() {
+	//Default Meshes
+	void LoadDefaultMeshes() {
+		DefaultSphereModel = (TuranEditor::Static_Model*)TuranEditor::EDITOR_FILESYSTEM->Find_ResourceIdentifier_byID(
+			TuranEditor::Model_Importer::Import_Model("C:/Users/furka/Desktop/Meshes/Sphere_ManifoldMesh.obj"))->DATA;
+	}
+
+	void RenderDataManager::Start_RenderingDataManagement(Game_RenderGraph* DefaultRG) {
+		RG = DefaultRG;
 		Load_SurfaceMaterialType();
 		Load_PointLineMaterialType();
 
 		//Point Cloud, Surface Reconstruction and Normal Estimation Study
 		CreateVertexAttributeLayouts();
 		CreateGeometryProcessingMaterials();
+		
+		//Default Meshes
+		LoadDefaultMeshes();
 	}
 
 	//0 is valid!
@@ -504,4 +668,32 @@ namespace TuranEditor {
 	}
 
 
+	POINTRENDERER::POINTRENDERER(unsigned int PointCount) : PositionXYZs(PointCount), PointCOLORRGBAs(PointCount) {
+		GPUHandle = GFXContentManager->Create_PointBuffer(PointRenderer_VertexAttrib, nullptr, PointCount);
+	}
+	vec3& POINTRENDERER::GetPointPosition_byIndex(unsigned int i) {
+#ifdef _DEBUG
+		if (i > PositionXYZs.size()) {
+			LOG_CRASHING("Overflowing access!");
+		}
+#endif
+		isResourcesUpdated = true;
+		return PositionXYZs[i];
+	}
+	vec4& POINTRENDERER::GetPointCOLORRGBA_byIndex(unsigned int i) {
+#ifdef _DEBUG
+		if (i > PointCOLORRGBAs.size()) {
+			LOG_CRASHING("Overflowing access!");
+		}
+#endif
+		isResourcesUpdated = true;
+		return PointCOLORRGBAs[i];
+	}
+	void POINTRENDERER::RenderThisFrame() {
+		shouldRenderThisFrame = true;
+	}
+	POINTRENDERER::~POINTRENDERER() {
+		shouldRenderThisFrame = false;
+		isResourcesUpdated = false;
+	}
 }

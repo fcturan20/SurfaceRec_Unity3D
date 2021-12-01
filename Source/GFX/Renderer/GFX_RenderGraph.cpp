@@ -3,9 +3,9 @@
 
 namespace GFX_API {
 	//Getter-Setters
-	DrawPass::DrawPass(const vector<DrawCall>& i_RG_DrawCallBuffer_, const vector<PointLineDrawCall>& i_RG_PointDrawCallBuffer, const char* name): NAME(name),
+	DrawPass::DrawPass(const vector<DrawCall>& i_RG_DrawCallBuffer_, const vector<PointLineDrawCall>& i_RG_PointDrawCallBuffer, const vector<SpecialDrawCall>& i_RGSpecialDrawCallBuffer, const char* name): NAME(name),
 		Is_SetupPhase_Called(false)
-		, RG_DrawCallBuffer(i_RG_DrawCallBuffer_), RG_PointDrawCallBuffer(i_RG_PointDrawCallBuffer){
+		, RG_DrawCallBuffer(i_RG_DrawCallBuffer_), RG_PointDrawCallBuffer(i_RG_PointDrawCallBuffer), RG_SpecialDrawCalls(i_RGSpecialDrawCallBuffer){
 
 	}
 
@@ -34,6 +34,9 @@ namespace GFX_API {
 	}
 	void RenderGraph::Register_PointDrawCall(PointLineDrawCall drawcall) {
 		PointDrawCallBuffer.push_back(drawcall);
+	}
+	void RenderGraph::Register_SpecialDrawCall(SpecialDrawCall specialdrawcall) {
+		SpecialDrawCallBuffer.push_back(specialdrawcall);
 	}
 	const vector<const RenderNode*> RenderGraph::Get_RenderNodes() {
 		vector<const RenderNode*> RNs;

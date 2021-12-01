@@ -76,16 +76,22 @@ SurfaceMatInst(TuranEditor::RenderDataManager::Create_SurfaceMaterialInstance(Tu
 
 	//NORMAL ESTIMATION
 	//Upload original point cloud with normals
-	if (HUMAN_PC->PointNormals) {
+	unsigned int PC_OriginalNormalsList_INDEX = UINT32_MAX;
+	for (unsigned int i = 0; i < HUMAN_PC->PointNormals.size(); i++) {
+		if (HUMAN_PC->PointNormals[i].NAME == PC_PointNormals::ORIGINAL_NORMALNAME) {
+			PC_OriginalNormalsList_INDEX = i;
+		}
+	}
+	if (PC_OriginalNormalsList_INDEX != UINT32_MAX) {
 		//Send Point Mesh Buffers
 		{
 			//Original
 			vector<vec3> OriginalHumanPC_Datas(HUMAN_PC->PointCount * 2);
 			for (unsigned int VertexID = 0; VertexID < HUMAN_PC->PointCount; VertexID++) {
 				OriginalHumanPC_Datas[VertexID] = HUMAN_PC->PointPositions[VertexID];
-				OriginalHumanPC_Datas[HUMAN_PC->PointCount + VertexID] = HUMAN_PC->PointNormals[VertexID];
+				OriginalHumanPC_Datas[HUMAN_PC->PointCount + VertexID] = HUMAN_PC->PointNormals[PC_OriginalNormalsList_INDEX].Normals[VertexID];
 			}
-			OriginalHuman_PC = GFXContentManager->Upload_PointBuffer(PositionNormal_VertexAttrib, OriginalHumanPC_Datas.data(), HUMAN_PC->PointCount);
+			OriginalHuman_PC = GFXContentManager->Create_PointBuffer(PositionNormal_VertexAttrib, OriginalHumanPC_Datas.data(), HUMAN_PC->PointCount);
 
 
 			//Upload Hough based Normal Reconstructed Point Cloud
@@ -95,7 +101,7 @@ SurfaceMatInst(TuranEditor::RenderDataManager::Create_SurfaceMaterialInstance(Tu
 				RobustNormalHumanPC_Datas[VertexID] = HUMAN_PC->PointPositions[VertexID];
 				RobustNormalHumanPC_Datas[HUMAN_PC->PointCount + VertexID] = NormalList[VertexID];
 			}
-			RobustNormalHuman_PC = GFXContentManager->Upload_PointBuffer(PositionNormal_VertexAttrib, RobustNormalHumanPC_Datas.data(), HUMAN_PC->PointCount);
+			RobustNormalHuman_PC = GFXContentManager->Create_PointBuffer(PositionNormal_VertexAttrib, RobustNormalHumanPC_Datas.data(), HUMAN_PC->PointCount);
 		}
 
 	}
@@ -160,19 +166,19 @@ void Main_Window::Run_Window() {
 				GFX_API::PointLineDrawCall LDC;
 				LDC.Draw_asPoint = true;
 				LDC.PointBuffer_ID = OriginalHuman_PC;
-				LDC.ShaderInstance_ID = TuranEditor::RenderDataManager::NormalLine_MatInst;
+				//LDC.ShaderInstance_ID = TuranEditor::RenderDataManager::NormalLine_MatInst;
 				PLDCs.push_back(LDC);
 				GFX_API::PointLineDrawCall PDC;
 				PDC.Draw_asPoint = true;
 				PDC.PointBuffer_ID = OriginalHuman_PC;
-				PDC.ShaderInstance_ID = TuranEditor::RenderDataManager::ShadedPoint_MatInst;
+				//PDC.ShaderInstance_ID = TuranEditor::RenderDataManager::ShadedPoint_MatInst;
 				PLDCs.push_back(PDC);
 
 				{
 					GFX_API::PointLineDrawCall LODC;
 					LODC.Draw_asPoint = true;
 					LODC.PointBuffer_ID = OriginalHuman_PC;
-					LODC.ShaderInstance_ID = TuranEditor::RenderDataManager::NormalLine_MatInst;
+					//LODC.ShaderInstance_ID = TuranEditor::RenderDataManager::NormalLine_MatInst;
 					PLDCs.push_back(LODC);
 				}
 			}
@@ -187,12 +193,12 @@ void Main_Window::Run_Window() {
 				GFX_API::PointLineDrawCall LDC;
 				LDC.Draw_asPoint = true;
 				LDC.PointBuffer_ID = OriginalHuman_PC;
-				LDC.ShaderInstance_ID = TuranEditor::RenderDataManager::NormalLine_MatInst;
+				//LDC.ShaderInstance_ID = TuranEditor::RenderDataManager::NormalLine_MatInst;
 				PLDCs.push_back(LDC);
 				GFX_API::PointLineDrawCall PDC;
 				PDC.Draw_asPoint = true;
 				PDC.PointBuffer_ID = OriginalHuman_PC;
-				PDC.ShaderInstance_ID = TuranEditor::RenderDataManager::ShadedPoint_MatInst;
+				//PDC.ShaderInstance_ID = TuranEditor::RenderDataManager::ShadedPoint_MatInst;
 				PLDCs.push_back(PDC);
 
 
@@ -208,12 +214,12 @@ void Main_Window::Run_Window() {
 				GFX_API::PointLineDrawCall LDC;
 				LDC.Draw_asPoint = true;
 				LDC.PointBuffer_ID = RobustNormalHuman_PC;
-				LDC.ShaderInstance_ID = TuranEditor::RenderDataManager::NormalLine_MatInst;
+				//LDC.ShaderInstance_ID = TuranEditor::RenderDataManager::NormalLine_MatInst;
 				PLDCs.push_back(LDC);
 				GFX_API::PointLineDrawCall PDC;
 				PDC.Draw_asPoint = true;
 				PDC.PointBuffer_ID = RobustNormalHuman_PC;
-				PDC.ShaderInstance_ID = TuranEditor::RenderDataManager::ShadedPoint_MatInst;
+				//PDC.ShaderInstance_ID = TuranEditor::RenderDataManager::ShadedPoint_MatInst;
 				PLDCs.push_back(PDC);
 
 
@@ -326,21 +332,21 @@ void Camera::Update(float yaw, float pitch) {
 	if (GFX->IsKey_Pressed(GFX_API::KEYBOARD_KEYs::KEYBOARD_W)) {
 		Position += Front_Vector * camera_speed;
 	}
-	else if (GFX->IsKey_Pressed(GFX_API::KEYBOARD_KEYs::KEYBOARD_S)) {
+	if (GFX->IsKey_Pressed(GFX_API::KEYBOARD_KEYs::KEYBOARD_S)) {
 		Position -= Front_Vector * camera_speed;
 	}
 
 	if (GFX->IsKey_Pressed(GFX_API::KEYBOARD_KEYs::KEYBOARD_D)) {
 		Position -= Right_Vector * camera_speed;
 	}
-	else if (GFX->IsKey_Pressed(GFX_API::KEYBOARD_KEYs::KEYBOARD_A)) {
+	if (GFX->IsKey_Pressed(GFX_API::KEYBOARD_KEYs::KEYBOARD_A)) {
 		Position += Right_Vector * camera_speed;
 	}
 
 	if (GFX->IsKey_Pressed(GFX_API::KEYBOARD_KEYs::KEYBOARD_NP_8)) {
 		Position += Up_Vector * camera_speed;
 	}
-	else if (GFX->IsKey_Pressed(GFX_API::KEYBOARD_KEYs::KEYBOARD_NP_2)) {
+	if (GFX->IsKey_Pressed(GFX_API::KEYBOARD_KEYs::KEYBOARD_NP_2)) {
 		Position -= Up_Vector * camera_speed;
 	}
 

@@ -8,7 +8,7 @@
 Game_RenderGraph::Game_RenderGraph() : RenderGraph("Game RenderGraph") {
 	LOG_STATUS("Game RenderGraph object is created!");
 	vector<GFX_API::Framebuffer::RT_SLOT> MainDrawPass_SLOTs;
-	GFX_API::DrawPass* MainPass = new Main_DrawPass(DrawCalls, PointDrawCallBuffer, MainDrawPass_SLOTs);
+	GFX_API::DrawPass* MainPass = new Main_DrawPass(DrawCalls, PointDrawCallBuffer, SpecialDrawCallBuffer, MainDrawPass_SLOTs);
 	RENDER_NODEs.push_back(MainPass);
 
 	GFX_API::Texture_Resource* COLOR_RT = new GFX_API::Texture_Resource;
@@ -35,7 +35,7 @@ Game_RenderGraph::Game_RenderGraph() : RenderGraph("Game RenderGraph") {
 	TuranEditor::Resource_Identifier* DEPTHRT_RESOURCE = new TuranEditor::Resource_Identifier;
 	{
 		DEPTH_RT->DATA = nullptr;
-		DEPTH_RT->DATA_SIZE = 1920 * 1080;
+		DEPTH_RT->DATA_SIZE = 1920 * 1080 * 4;
 		DEPTH_RT->Has_Mipmaps = false;
 		DEPTH_RT->HEIGHT = 1080;
 		DEPTH_RT->WIDTH = 1920;
@@ -60,7 +60,8 @@ void Game_RenderGraph::Run_RenderGraph() {
 
 
 	LOG_STATUS("Running Game_RenderGraph!");
-	GFX_API::DrawPass* MainPass = (GFX_API::DrawPass*)RENDER_NODEs[0];
+	Main_DrawPass* MainPass = (Main_DrawPass*)RENDER_NODEs[0];
+	MainPass->shouldPC_DepthWrite = shouldPC_DepthWrite;
 	MainPass->ResourceUpdatePhase();
 	MainPass->Execute();
 	DrawCalls.clear();
@@ -71,4 +72,9 @@ void Game_RenderGraph::Run_RenderGraph() {
 	GFX_API::Framebuffer* FB = GFXContentManager->Find_Framebuffer_byGFXID(MainPass->Get_FramebufferID());
 	GFX->Show_RenderTarget_onWindow(FB->BOUND_RTs[0].RT_ID);
 	LOG_STATUS("Finished running the Game_RenderGraph!");
+}
+
+void* Game_RenderGraph::GetDepthBuffer(unsigned int& DATASIZE) {
+	Main_DrawPass* MainPass = (Main_DrawPass*)RENDER_NODEs[0];
+	return GFXContentManager->ReadFramebufferAttachment(GFX_API::RT_ATTACHMENTs::TEXTURE_ATTACHMENT_DEPTH, MainPass->Get_FramebufferID(), DATASIZE);
 }

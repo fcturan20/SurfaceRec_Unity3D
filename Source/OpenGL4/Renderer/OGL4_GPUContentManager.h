@@ -38,7 +38,8 @@ namespace OpenGL4 {
 		virtual void Unload_MeshBuffer(unsigned int MeshBuffer_ID) override;
 
 
-		virtual unsigned int Upload_PointBuffer(const GFX_API::VertexAttributeLayout& attributelayout, const void* point_data, unsigned int point_count) override;
+		virtual unsigned int Create_PointBuffer(const GFX_API::VertexAttributeLayout& attributelayout, const void* point_data, unsigned int point_count) override;
+		virtual void Upload_PointBuffer(unsigned int PointBufferID, const void* point_data) override;
 		virtual unsigned int CreatePointBuffer_fromMeshBuffer(unsigned int MeshBuffer_ID, unsigned int AttributeIndex_toUseAsPointBuffer) override;
 		virtual void Unload_PointBuffer(unsigned int PointBuffer_ID) override;
 
@@ -63,6 +64,7 @@ namespace OpenGL4 {
 
 		virtual unsigned int Create_Framebuffer() override;
 		virtual void Attach_RenderTarget_toFramebuffer(const GFX_API::Framebuffer::RT_SLOT* RT_SLOT, GFX_API::RT_ATTACHMENTs ATTACHMENT_TYPE, unsigned int FB_ID) override;
+		virtual void* ReadFramebufferAttachment(GFX_API::RT_ATTACHMENTs ATTACHMENT_TYPE, unsigned int FB_ID, unsigned int& DATASIZE) override;
 		virtual void Delete_Framebuffer(unsigned int Framebuffer_ID) override;
 	};
 

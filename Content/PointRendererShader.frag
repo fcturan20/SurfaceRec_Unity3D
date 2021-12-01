@@ -1,34 +1,20 @@
 #version 460
 out vec4 Fragment_Color;
-layout (depth_less) out float gl_FragDepth;
-#define MAX_MATINSTNUMBER 1000
-#define MAX_SPOTLIGHTs 10
-#define MAX_POINTLIGHTs 10
-#define MAX_DIRECTIONALLIGHTs 1
-
-struct PointLight{
-	vec3 POSITION;
-};
-
-struct SpotLight{
-	vec3 POSITION;
-};
 
 struct DirectionalLight{
 	vec3 DIRECTION;
 	vec3 COLOR;
 };
-
-layout (std430, binding = 2) buffer LIGHTs{
-	DirectionalLight DIRECTIONALLIGHTs[MAX_DIRECTIONALLIGHTs];
-	PointLight POINTLIGHTs[MAX_POINTLIGHTs];
-	SpotLight SPOTLIGHTs[MAX_SPOTLIGHTs];
-	uint DIRECTIONALLIGHTs_COUNT, POINTLIGHTs_COUNT, SPOTLIGHTs_COUNT;
+layout (std430) buffer LIGHTs{
+	DirectionalLight DIRECTIONALLIGHT;
 };
+in vec4 PointColor;
 
-
-in vec3 vertex_color;
-
+uniform uint isPhongShadingActive;
 void main(){
-	Fragment_Color = vec4(vertex_color, 1.0f);
+	if(isPhongShadingActive == 1){
+		vec3 Normal = (PointColor.xyz * 2) - 1;
+		Fragment_Color = vec4(vec3(dot(normalize(Normal), normalize(DIRECTIONALLIGHT.DIRECTION))), 1.0f);
+	}
+	else{Fragment_Color = vec4(PointColor);}
 }

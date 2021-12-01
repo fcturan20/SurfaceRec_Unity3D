@@ -6,8 +6,8 @@
 using namespace TuranAPI::Logging;
 
 Logger* Logger::SELF = nullptr;
-Logger::Logger() : MainLogFile_Path("C:/dev/TuranEngine/logs.txt"), WarningLogFile_Path("C:/dev/TuranEngine/warnings.txt"),
-ErrorLogFile_Path("C:/dev/TuranEngine/errors.txt"), NotCodedLogFile_Path("C:/dev/TuranEngine/notcodedpaths.txt")
+Logger::Logger() : MainLogFile_Path("D:/dev/TuranEngine/logs.txt"), WarningLogFile_Path("D:/dev/TuranEngine/warnings.txt"),
+ErrorLogFile_Path("D:/dev/TuranEngine/errors.txt"), NotCodedLogFile_Path("D:/dev/TuranEngine/notcodedpaths.txt")
 {
 #ifdef TURAN_DEBUGGING
 	std::cout << "Logger constructor started!\n";

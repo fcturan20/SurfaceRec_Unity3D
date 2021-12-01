@@ -9,7 +9,8 @@ class Main_DrawPass : public GFX_API::DrawPass {
 	const GFX_API::Framebuffer* FB;
 	void Create_LineRendererMatInst();
 public:
-	Main_DrawPass(const vector<GFX_API::DrawCall>& RG_DrawCalls, const vector<GFX_API::PointLineDrawCall>& i_RG_PointDrawCallBuffer, vector<GFX_API::Framebuffer::RT_SLOT>& Needed_RTSlots);
+	bool shouldPC_DepthWrite = true;
+	Main_DrawPass(const vector<GFX_API::DrawCall>& RG_DrawCalls, const vector<GFX_API::PointLineDrawCall>& i_RG_PointDrawCallBuffer, const vector<GFX_API::SpecialDrawCall>& i_RGSpecialDCBuffer, vector<GFX_API::Framebuffer::RT_SLOT>& Needed_RTSlots);
 
 	static unsigned int Get_BitMaskFlag();
 

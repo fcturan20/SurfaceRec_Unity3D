@@ -26,6 +26,7 @@ namespace GFX_API {
 		virtual void DrawTriangle(const GFX_Mesh* MeshBuffer) = 0;
 		virtual void DrawPoint(const GFX_Point* PointBuffer) = 0;
 		virtual void DrawLine(const GFX_Point* PointBuffer) = 0;
+		virtual void DrawSpecialShader(GFX_API::Material_Instance* MATINST, unsigned int VERTEXCOUNT, const std::vector<GFX_API::Material_Uniform>& OverridenUniforms) = 0;
 		virtual void Compute_Dispatch(const GFX_API::ComputeShader_Instance* CS, vec3 Dispatch_Groups) = 0;
 	};
 }

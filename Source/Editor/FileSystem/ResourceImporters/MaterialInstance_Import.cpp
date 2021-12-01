@@ -95,7 +95,7 @@ namespace TuranEditor {
 	}
 
 
-	//Output Path should be Directory + Name. Like "C:/dev/Content/First". Every Material Instance has .matinstcont extension!
+	//Output Path should be Directory + Name. Like "D:/dev/Content/First". Every Material Instance has .matinstcont extension!
 	void Create_Instance_ofMaterialType(Resource_Identifier* material_type, vector<GFX_API::Material_Uniform>& UNIFORM_LIST, const char* output_path) {
 		GFX_API::Material_Instance* MATERIAL_INSTANCE = new GFX_API::Material_Instance;
 		Resource_Identifier* RESOURCE = new Resource_Identifier;

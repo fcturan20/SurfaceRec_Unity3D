@@ -1,12 +1,11 @@
 #pragma once
 #include "Editor_Includes.h"
-#include "Editors\Main_Window.h"
-#include "Editors\PointCloudViewer.h"
+#include "Editors/Main_Window.h"
+#include "Editors/PointCloudViewer.h"
 #include "RenderContext/Game_RenderGraph.h"
 #include "GFX/IMGUI/IMGUI_Core.h"
 #include "GFX/GFX_Core.h"
 #include "FileSystem/EditorFileSystem_Core.h"
-#include "Staj/DijkstraSPFAlgorithm.h"
 
 #include "FileSystem/ResourceImporters/Model_Loader.h"
 #include "Editor/RenderContext/Editor_DataManager.h"
@@ -14,10 +13,10 @@
 #include "Editor/FileSystem/ResourceTypes/ResourceTYPEs.h"
 
 //Is
-#include "Editor/Ýþ/DataLoader.h"
-#include "Editor/Ýþ/DataTypes.h"
-#include "Editor/Ýþ/Algorithms.h"
-#include "Editor/Ýþ/Algorithms_UnitTests.h"
+#include "Editor/TUBITAK/DataLoader.h"
+#include "Editor/TUBITAK/DataTypes.h"
+#include "Editor/TUBITAK/Algorithms.h"
+#include "Editor/TUBITAK/Algorithms_UnitTests.h"
 
 namespace TuranEditor {
 	class Editor_System {

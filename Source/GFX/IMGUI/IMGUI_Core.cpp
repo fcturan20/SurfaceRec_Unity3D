@@ -224,9 +224,6 @@ namespace GFX_API {
 				bool x = items_status->GetBit_Value(i);
 				Checkbox((*item_names)[i].c_str(), &x);
 				x ? items_status->SetBit_True(i) : items_status->SetBit_False(i);
-				std::cout << "Current Index: " << i << std::endl;
-				std::cout << "Current Name: " << (*item_names)[i] << std::endl;
-				std::cout << "Current Value: " << x << std::endl;
 			}
 			ImGui::ListBoxFooter();
 		}

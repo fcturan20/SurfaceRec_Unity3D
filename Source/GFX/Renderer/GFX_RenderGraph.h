@@ -22,12 +22,13 @@ namespace GFX_API {
 		vector<unsigned int> DrawCallBuffer;
 		const vector<DrawCall>& RG_DrawCallBuffer;
 		const vector<PointLineDrawCall>& RG_PointDrawCallBuffer;
+		const vector<SpecialDrawCall>& RG_SpecialDrawCalls;
 
 		unsigned int FRAMEBUFFER;
 		bool Is_SetupPhase_Called;
 		string NAME;
 	public:
-		DrawPass(const vector<DrawCall>& i_RG_DrawCallBuffer, const vector<PointLineDrawCall>& i_RG_PointDrawCallBuffer, const char* NAME);
+		DrawPass(const vector<DrawCall>& i_RG_DrawCallBuffer, const vector<PointLineDrawCall>& i_RG_PointDrawCallBuffer, const vector<SpecialDrawCall>& i_RGSpecialDrawCallBuffer, const char* NAME);
 
 		//While constructing a RenderGraph, call this to couple DrawPass and RenderGraph
 		//So, DrawCallBuffer should point RenderGraph's DrawCalls vector!
@@ -55,6 +56,7 @@ namespace GFX_API {
 		vector<RenderNode*> RENDER_NODEs;
 		vector<DrawCall> DrawCalls;
 		vector<PointLineDrawCall> PointDrawCallBuffer;
+		vector<SpecialDrawCall> SpecialDrawCallBuffer;
 		unsigned int RenderGraph_ID;
 
 	public:
@@ -63,6 +65,7 @@ namespace GFX_API {
 
 		void Register_DrawCall(DrawCall drawcall);
 		void Register_PointDrawCall(PointLineDrawCall pointdrawcall);
+		void Register_SpecialDrawCall(SpecialDrawCall specialdrawcall);
 		//Don't call this function, this function is only called by GFX APIs
 		virtual void Run_RenderGraph() = 0;
 		const vector<const RenderNode*> Get_RenderNodes();

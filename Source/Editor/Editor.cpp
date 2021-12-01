@@ -4,6 +4,7 @@ using namespace TuranEditor;
 int main() {
 	Editor_System* EDITORSYSTEM = new Editor_System;
 	Game_RenderGraph First_RenderGraph;
+	RenderDataManager::Start_RenderingDataManagement(&First_RenderGraph);
 
 
 	//Main_Window* main_window = new Main_Window(PositionNormal_VertexAttrib, &First_RenderGraph);

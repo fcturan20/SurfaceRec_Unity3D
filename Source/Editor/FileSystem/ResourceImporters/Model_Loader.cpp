@@ -272,7 +272,7 @@ namespace TuranEditor {
 			unsigned char NEXTATTRIB_INDEX = 1;
 			GFX_API::VertexAttributeLayout& LAYOUT = MESH->DataLayout;
 
-			
+			/*
 			if (Attribute_Info.TextCoords) {
 				for (unsigned int i = 0; i < Attribute_Info.TextCoords; i++) {
 					vec2* TEXTCOORD_PTR = (vec2*)NEXTDATA_PTR;
@@ -284,7 +284,7 @@ namespace TuranEditor {
 					NEXTDATA_PTR += data_size;
 					NEXTATTRIB_INDEX++;
 				}
-			}
+			}*/
 			if (Attribute_Info.Normal) {
 				GFX_API::VertexAttribute& NORMAL_ATTRIB = LAYOUT.Attributes[NEXTATTRIB_INDEX];
 				unsigned int data_size = MESH->VERTEX_NUMBER * GFX_API::Get_UNIFORMTYPEs_SIZEinbytes(NORMAL_ATTRIB.DATATYPE);

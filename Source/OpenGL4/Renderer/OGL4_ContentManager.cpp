@@ -168,18 +168,21 @@ namespace OpenGL4 {
 		LOG_WARNING("Unload has failed because intended Mesh Buffer isn't found in OpenGL::GPU_ContentManager!");
 	}
 
-	unsigned int GPU_ContentManager::Upload_PointBuffer(const GFX_API::VertexAttributeLayout& attributelayout, const void* point_data, unsigned int point_count) {
+	unsigned int GPU_ContentManager::Create_PointBuffer(const GFX_API::VertexAttributeLayout& attributelayout, const void* point_data, unsigned int point_count) {
 		GFX_API::GFX_Point POINT;
 		OGL4_MESH* GL_MESH = new OGL4_MESH;
 		POINT.BUFFER_ID = Create_PointBufferID();
 		POINT.GL_ID = GL_MESH;
 		POINT.POINT_COUNT = point_count;
+		POINT.PointAttributeLayout = attributelayout;
 
 		glGenVertexArrays(1, &GL_MESH->VAO);
 		glGenBuffers(1, &GL_MESH->VBO);
 		glBindVertexArray(GL_MESH->VAO);
 		glBindBuffer(GL_ARRAY_BUFFER, GL_MESH->VBO);
-		glBufferData(GL_ARRAY_BUFFER, attributelayout.size_pervertex * point_count, point_data, GL_STATIC_DRAW);
+		if (point_data != nullptr) {
+			glBufferData(GL_ARRAY_BUFFER, attributelayout.size_pervertex * point_count, point_data, GL_STATIC_DRAW);
+		}
 
 
 		for (unsigned int attribute_index = 0; attribute_index < attributelayout.Attributes.size(); attribute_index++) {
@@ -198,6 +201,24 @@ namespace OpenGL4 {
 		POINTBUFFERs.push_back(POINT);
 		glBindVertexArray(0);
 		return POINT.BUFFER_ID;
+	}
+	void GPU_ContentManager::Upload_PointBuffer(unsigned int PointBufferID, const void* point_data) {
+		unsigned int i = 0;
+		GFX_API::GFX_Point* POINT = Find_PointBuffer_byBufferID(PointBufferID, &i);
+		if (!POINT) {
+			LOG_CRASHING("Point buffer isn't found!");
+			return;
+		}
+		OGL4_MESH* GLPOINT = (OGL4_MESH*)POINT->GL_ID;
+		if (!GLPOINT) {
+			LOG_CRASHING("Point buffer's GL representation isn't found!");
+			return;
+		}
+		glBindVertexArray(GLPOINT->VAO);
+		glBindBuffer(GL_ARRAY_BUFFER, GLPOINT->VBO);
+		glBufferData(GL_ARRAY_BUFFER, POINT->PointAttributeLayout.size_pervertex * POINT->POINT_COUNT, point_data, GL_STATIC_DRAW);
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 	unsigned int GPU_ContentManager::CreatePointBuffer_fromMeshBuffer(unsigned int MeshBuffer_ID, unsigned int AttributeIndex_toUseAsPointBuffer) {
 		GFX_API::GFX_Mesh* MESH = nullptr;
@@ -607,7 +628,27 @@ namespace OpenGL4 {
 
 		FB->BOUND_RTs.push_back(*RT_SLOT);
 	}
+	void* GPU_ContentManager::ReadFramebufferAttachment(GFX_API::RT_ATTACHMENTs ATTACHMENTTYPE, unsigned int FB_ID, unsigned int& DATASIZE) {
+		GLint boundfb = 0;
+		glGetIntegerv(GL_FRAMEBUFFER_BINDING, &boundfb);
+		GFX_API::Framebuffer* fb = nullptr;
+		fb = Find_Framebuffer_byGFXID(FB_ID);
+		glBindFramebuffer(GL_FRAMEBUFFER, *(unsigned int*)fb->GL_ID);
+		GLenum en = 0; unsigned int rt_compsize = 0;
+		switch (ATTACHMENTTYPE) {
+		case GFX_API::RT_ATTACHMENTs::TEXTURE_ATTACHMENT_COLOR0: LOG_CRASHING("Color attachment isn't supported properly!"); en = GL_RGBA; rt_compsize = 16; break;
+		case GFX_API::RT_ATTACHMENTs::TEXTURE_ATTACHMENT_DEPTH: en = GL_DEPTH_COMPONENT; rt_compsize = 4; break;
+		case GFX_API::RT_ATTACHMENTs::TEXTURE_ATTACHMENT_DEPTHSTENCIL: en = GL_DEPTH_STENCIL; rt_compsize = 4; break;
+		}
+		GFXContentManager->Find_GFXTexture_byID(fb->BOUND_RTs[0].RT_ID)->ASSET_ID;
+		DATASIZE = fb->BOUND_RTs[0].WIDTH * fb->BOUND_RTs[0].HEIGHT * rt_compsize;
+		void* returneddata = new char[DATASIZE];
+		glReadPixels(0, 0, fb->BOUND_RTs[0].WIDTH, fb->BOUND_RTs[0].HEIGHT, en, GL_FLOAT, returneddata);
 
+		glBindFramebuffer(GL_FRAMEBUFFER, boundfb);
+
+		return returneddata;
+	}
 
 	unsigned int GPU_ContentManager::Create_BindingPoint() {
 		//We can use the Binding Point 0!

@@ -4,15 +4,37 @@ struct Vec3f{
     z : float;
 }
 
-table RecMesh{
+
+table NormalsStruct{
+    NAME : string;
+    Normals : [Vec3f];
+}
+
+table DGS_Mesh{
+    Positions : [Vec3f];
+    NormalLists : [NormalsStruct];
+    NAME : string;
+}
+
+table DGS_Model{
+    MESHes : [DGS_Mesh];
+    INFO : string;
+    BOUNDINGMIN : Vec3f;
+    BOUNDINGMAX : Vec3f;
+    CENTER : Vec3f;
+    BOUNDINGSPHERERADIUS : float;
+
+}
+
+table PC_Struct{
 Positions : [Vec3f];
-Normals : [Vec3f];
-ReconstructionType : ubyte;
 KNN : ubyte;
+NormalLists : [NormalsStruct];
 }
 
 union Resource_Type{
-    ReconstructedMesh : RecMesh
+    DGSMODEL : DGS_Model,
+    PointCloud : PC_Struct
 }
 
 table Resource{

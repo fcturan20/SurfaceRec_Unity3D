@@ -8,36 +8,45 @@
 
 struct Vec3f;
 
-struct RecMesh;
+struct NormalsStruct;
+
+struct DGS_Mesh;
+
+struct DGS_Model;
+
+struct PC_Struct;
 
 struct Resource;
 
 enum Resource_Type {
   Resource_Type_NONE = 0,
-  Resource_Type_ReconstructedMesh = 1,
+  Resource_Type_DGSMODEL = 1,
+  Resource_Type_PointCloud = 2,
   Resource_Type_MIN = Resource_Type_NONE,
-  Resource_Type_MAX = Resource_Type_ReconstructedMesh
+  Resource_Type_MAX = Resource_Type_PointCloud
 };
 
-inline const Resource_Type (&EnumValuesResource_Type())[2] {
+inline const Resource_Type (&EnumValuesResource_Type())[3] {
   static const Resource_Type values[] = {
     Resource_Type_NONE,
-    Resource_Type_ReconstructedMesh
+    Resource_Type_DGSMODEL,
+    Resource_Type_PointCloud
   };
   return values;
 }
 
 inline const char * const *EnumNamesResource_Type() {
-  static const char * const names[3] = {
+  static const char * const names[4] = {
     "NONE",
-    "ReconstructedMesh",
+    "DGSMODEL",
+    "PointCloud",
     nullptr
   };
   return names;
 }
 
 inline const char *EnumNameResource_Type(Resource_Type e) {
-  if (e < Resource_Type_NONE || e > Resource_Type_ReconstructedMesh) return "";
+  if (e < Resource_Type_NONE || e > Resource_Type_PointCloud) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesResource_Type()[index];
 }
@@ -46,8 +55,12 @@ template<typename T> struct Resource_TypeTraits {
   static const Resource_Type enum_value = Resource_Type_NONE;
 };
 
-template<> struct Resource_TypeTraits<RecMesh> {
-  static const Resource_Type enum_value = Resource_Type_ReconstructedMesh;
+template<> struct Resource_TypeTraits<DGS_Model> {
+  static const Resource_Type enum_value = Resource_Type_DGSMODEL;
+};
+
+template<> struct Resource_TypeTraits<PC_Struct> {
+  static const Resource_Type enum_value = Resource_Type_PointCloud;
 };
 
 bool VerifyResource_Type(flatbuffers::Verifier &verifier, const void *obj, Resource_Type type);
@@ -80,92 +93,337 @@ FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) Vec3f FLATBUFFERS_FINAL_CLASS {
 };
 FLATBUFFERS_STRUCT_END(Vec3f, 12);
 
-struct RecMesh FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct NormalsStruct FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_POSITIONS = 4,
-    VT_NORMALS = 6,
-    VT_RECONSTRUCTIONTYPE = 8,
-    VT_KNN = 10
+    VT_NAME = 4,
+    VT_NORMALS = 6
   };
-  const flatbuffers::Vector<const Vec3f *> *Positions() const {
-    return GetPointer<const flatbuffers::Vector<const Vec3f *> *>(VT_POSITIONS);
+  const flatbuffers::String *NAME() const {
+    return GetPointer<const flatbuffers::String *>(VT_NAME);
   }
   const flatbuffers::Vector<const Vec3f *> *Normals() const {
     return GetPointer<const flatbuffers::Vector<const Vec3f *> *>(VT_NORMALS);
   }
-  uint8_t ReconstructionType() const {
-    return GetField<uint8_t>(VT_RECONSTRUCTIONTYPE, 0);
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyOffset(verifier, VT_NAME) &&
+           verifier.VerifyString(NAME()) &&
+           VerifyOffset(verifier, VT_NORMALS) &&
+           verifier.VerifyVector(Normals()) &&
+           verifier.EndTable();
   }
-  uint8_t KNN() const {
-    return GetField<uint8_t>(VT_KNN, 0);
+};
+
+struct NormalsStructBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_NAME(flatbuffers::Offset<flatbuffers::String> NAME) {
+    fbb_.AddOffset(NormalsStruct::VT_NAME, NAME);
+  }
+  void add_Normals(flatbuffers::Offset<flatbuffers::Vector<const Vec3f *>> Normals) {
+    fbb_.AddOffset(NormalsStruct::VT_NORMALS, Normals);
+  }
+  explicit NormalsStructBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  NormalsStructBuilder &operator=(const NormalsStructBuilder &);
+  flatbuffers::Offset<NormalsStruct> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<NormalsStruct>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<NormalsStruct> CreateNormalsStruct(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    flatbuffers::Offset<flatbuffers::String> NAME = 0,
+    flatbuffers::Offset<flatbuffers::Vector<const Vec3f *>> Normals = 0) {
+  NormalsStructBuilder builder_(_fbb);
+  builder_.add_Normals(Normals);
+  builder_.add_NAME(NAME);
+  return builder_.Finish();
+}
+
+inline flatbuffers::Offset<NormalsStruct> CreateNormalsStructDirect(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    const char *NAME = nullptr,
+    const std::vector<Vec3f> *Normals = nullptr) {
+  auto NAME__ = NAME ? _fbb.CreateString(NAME) : 0;
+  auto Normals__ = Normals ? _fbb.CreateVectorOfStructs<Vec3f>(*Normals) : 0;
+  return CreateNormalsStruct(
+      _fbb,
+      NAME__,
+      Normals__);
+}
+
+struct DGS_Mesh FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_POSITIONS = 4,
+    VT_NORMALLISTS = 6,
+    VT_NAME = 8
+  };
+  const flatbuffers::Vector<const Vec3f *> *Positions() const {
+    return GetPointer<const flatbuffers::Vector<const Vec3f *> *>(VT_POSITIONS);
+  }
+  const flatbuffers::Vector<flatbuffers::Offset<NormalsStruct>> *NormalLists() const {
+    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<NormalsStruct>> *>(VT_NORMALLISTS);
+  }
+  const flatbuffers::String *NAME() const {
+    return GetPointer<const flatbuffers::String *>(VT_NAME);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_POSITIONS) &&
            verifier.VerifyVector(Positions()) &&
-           VerifyOffset(verifier, VT_NORMALS) &&
-           verifier.VerifyVector(Normals()) &&
-           VerifyField<uint8_t>(verifier, VT_RECONSTRUCTIONTYPE) &&
-           VerifyField<uint8_t>(verifier, VT_KNN) &&
+           VerifyOffset(verifier, VT_NORMALLISTS) &&
+           verifier.VerifyVector(NormalLists()) &&
+           verifier.VerifyVectorOfTables(NormalLists()) &&
+           VerifyOffset(verifier, VT_NAME) &&
+           verifier.VerifyString(NAME()) &&
            verifier.EndTable();
   }
 };
 
-struct RecMeshBuilder {
+struct DGS_MeshBuilder {
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
   void add_Positions(flatbuffers::Offset<flatbuffers::Vector<const Vec3f *>> Positions) {
-    fbb_.AddOffset(RecMesh::VT_POSITIONS, Positions);
+    fbb_.AddOffset(DGS_Mesh::VT_POSITIONS, Positions);
   }
-  void add_Normals(flatbuffers::Offset<flatbuffers::Vector<const Vec3f *>> Normals) {
-    fbb_.AddOffset(RecMesh::VT_NORMALS, Normals);
+  void add_NormalLists(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<NormalsStruct>>> NormalLists) {
+    fbb_.AddOffset(DGS_Mesh::VT_NORMALLISTS, NormalLists);
   }
-  void add_ReconstructionType(uint8_t ReconstructionType) {
-    fbb_.AddElement<uint8_t>(RecMesh::VT_RECONSTRUCTIONTYPE, ReconstructionType, 0);
+  void add_NAME(flatbuffers::Offset<flatbuffers::String> NAME) {
+    fbb_.AddOffset(DGS_Mesh::VT_NAME, NAME);
   }
-  void add_KNN(uint8_t KNN) {
-    fbb_.AddElement<uint8_t>(RecMesh::VT_KNN, KNN, 0);
-  }
-  explicit RecMeshBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit DGS_MeshBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  RecMeshBuilder &operator=(const RecMeshBuilder &);
-  flatbuffers::Offset<RecMesh> Finish() {
+  DGS_MeshBuilder &operator=(const DGS_MeshBuilder &);
+  flatbuffers::Offset<DGS_Mesh> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<RecMesh>(end);
+    auto o = flatbuffers::Offset<DGS_Mesh>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<RecMesh> CreateRecMesh(
+inline flatbuffers::Offset<DGS_Mesh> CreateDGS_Mesh(
     flatbuffers::FlatBufferBuilder &_fbb,
     flatbuffers::Offset<flatbuffers::Vector<const Vec3f *>> Positions = 0,
-    flatbuffers::Offset<flatbuffers::Vector<const Vec3f *>> Normals = 0,
-    uint8_t ReconstructionType = 0,
-    uint8_t KNN = 0) {
-  RecMeshBuilder builder_(_fbb);
-  builder_.add_Normals(Normals);
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<NormalsStruct>>> NormalLists = 0,
+    flatbuffers::Offset<flatbuffers::String> NAME = 0) {
+  DGS_MeshBuilder builder_(_fbb);
+  builder_.add_NAME(NAME);
+  builder_.add_NormalLists(NormalLists);
   builder_.add_Positions(Positions);
-  builder_.add_KNN(KNN);
-  builder_.add_ReconstructionType(ReconstructionType);
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<RecMesh> CreateRecMeshDirect(
+inline flatbuffers::Offset<DGS_Mesh> CreateDGS_MeshDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
     const std::vector<Vec3f> *Positions = nullptr,
-    const std::vector<Vec3f> *Normals = nullptr,
-    uint8_t ReconstructionType = 0,
-    uint8_t KNN = 0) {
+    const std::vector<flatbuffers::Offset<NormalsStruct>> *NormalLists = nullptr,
+    const char *NAME = nullptr) {
   auto Positions__ = Positions ? _fbb.CreateVectorOfStructs<Vec3f>(*Positions) : 0;
-  auto Normals__ = Normals ? _fbb.CreateVectorOfStructs<Vec3f>(*Normals) : 0;
-  return CreateRecMesh(
+  auto NormalLists__ = NormalLists ? _fbb.CreateVector<flatbuffers::Offset<NormalsStruct>>(*NormalLists) : 0;
+  auto NAME__ = NAME ? _fbb.CreateString(NAME) : 0;
+  return CreateDGS_Mesh(
       _fbb,
       Positions__,
-      Normals__,
-      ReconstructionType,
-      KNN);
+      NormalLists__,
+      NAME__);
+}
+
+struct DGS_Model FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_MESHES = 4,
+    VT_INFO = 6,
+    VT_BOUNDINGMIN = 8,
+    VT_BOUNDINGMAX = 10,
+    VT_CENTER = 12,
+    VT_BOUNDINGSPHERERADIUS = 14
+  };
+  const flatbuffers::Vector<flatbuffers::Offset<DGS_Mesh>> *MESHes() const {
+    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<DGS_Mesh>> *>(VT_MESHES);
+  }
+  const flatbuffers::String *INFO() const {
+    return GetPointer<const flatbuffers::String *>(VT_INFO);
+  }
+  const Vec3f *BOUNDINGMIN() const {
+    return GetStruct<const Vec3f *>(VT_BOUNDINGMIN);
+  }
+  const Vec3f *BOUNDINGMAX() const {
+    return GetStruct<const Vec3f *>(VT_BOUNDINGMAX);
+  }
+  const Vec3f *CENTER() const {
+    return GetStruct<const Vec3f *>(VT_CENTER);
+  }
+  float BOUNDINGSPHERERADIUS() const {
+    return GetField<float>(VT_BOUNDINGSPHERERADIUS, 0.0f);
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyOffset(verifier, VT_MESHES) &&
+           verifier.VerifyVector(MESHes()) &&
+           verifier.VerifyVectorOfTables(MESHes()) &&
+           VerifyOffset(verifier, VT_INFO) &&
+           verifier.VerifyString(INFO()) &&
+           VerifyField<Vec3f>(verifier, VT_BOUNDINGMIN) &&
+           VerifyField<Vec3f>(verifier, VT_BOUNDINGMAX) &&
+           VerifyField<Vec3f>(verifier, VT_CENTER) &&
+           VerifyField<float>(verifier, VT_BOUNDINGSPHERERADIUS) &&
+           verifier.EndTable();
+  }
+};
+
+struct DGS_ModelBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_MESHes(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<DGS_Mesh>>> MESHes) {
+    fbb_.AddOffset(DGS_Model::VT_MESHES, MESHes);
+  }
+  void add_INFO(flatbuffers::Offset<flatbuffers::String> INFO) {
+    fbb_.AddOffset(DGS_Model::VT_INFO, INFO);
+  }
+  void add_BOUNDINGMIN(const Vec3f *BOUNDINGMIN) {
+    fbb_.AddStruct(DGS_Model::VT_BOUNDINGMIN, BOUNDINGMIN);
+  }
+  void add_BOUNDINGMAX(const Vec3f *BOUNDINGMAX) {
+    fbb_.AddStruct(DGS_Model::VT_BOUNDINGMAX, BOUNDINGMAX);
+  }
+  void add_CENTER(const Vec3f *CENTER) {
+    fbb_.AddStruct(DGS_Model::VT_CENTER, CENTER);
+  }
+  void add_BOUNDINGSPHERERADIUS(float BOUNDINGSPHERERADIUS) {
+    fbb_.AddElement<float>(DGS_Model::VT_BOUNDINGSPHERERADIUS, BOUNDINGSPHERERADIUS, 0.0f);
+  }
+  explicit DGS_ModelBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  DGS_ModelBuilder &operator=(const DGS_ModelBuilder &);
+  flatbuffers::Offset<DGS_Model> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<DGS_Model>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<DGS_Model> CreateDGS_Model(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<DGS_Mesh>>> MESHes = 0,
+    flatbuffers::Offset<flatbuffers::String> INFO = 0,
+    const Vec3f *BOUNDINGMIN = 0,
+    const Vec3f *BOUNDINGMAX = 0,
+    const Vec3f *CENTER = 0,
+    float BOUNDINGSPHERERADIUS = 0.0f) {
+  DGS_ModelBuilder builder_(_fbb);
+  builder_.add_BOUNDINGSPHERERADIUS(BOUNDINGSPHERERADIUS);
+  builder_.add_CENTER(CENTER);
+  builder_.add_BOUNDINGMAX(BOUNDINGMAX);
+  builder_.add_BOUNDINGMIN(BOUNDINGMIN);
+  builder_.add_INFO(INFO);
+  builder_.add_MESHes(MESHes);
+  return builder_.Finish();
+}
+
+inline flatbuffers::Offset<DGS_Model> CreateDGS_ModelDirect(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    const std::vector<flatbuffers::Offset<DGS_Mesh>> *MESHes = nullptr,
+    const char *INFO = nullptr,
+    const Vec3f *BOUNDINGMIN = 0,
+    const Vec3f *BOUNDINGMAX = 0,
+    const Vec3f *CENTER = 0,
+    float BOUNDINGSPHERERADIUS = 0.0f) {
+  auto MESHes__ = MESHes ? _fbb.CreateVector<flatbuffers::Offset<DGS_Mesh>>(*MESHes) : 0;
+  auto INFO__ = INFO ? _fbb.CreateString(INFO) : 0;
+  return CreateDGS_Model(
+      _fbb,
+      MESHes__,
+      INFO__,
+      BOUNDINGMIN,
+      BOUNDINGMAX,
+      CENTER,
+      BOUNDINGSPHERERADIUS);
+}
+
+struct PC_Struct FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_POSITIONS = 4,
+    VT_KNN = 6,
+    VT_NORMALLISTS = 8
+  };
+  const flatbuffers::Vector<const Vec3f *> *Positions() const {
+    return GetPointer<const flatbuffers::Vector<const Vec3f *> *>(VT_POSITIONS);
+  }
+  uint8_t KNN() const {
+    return GetField<uint8_t>(VT_KNN, 0);
+  }
+  const flatbuffers::Vector<flatbuffers::Offset<NormalsStruct>> *NormalLists() const {
+    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<NormalsStruct>> *>(VT_NORMALLISTS);
+  }
+  bool Verify(flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyOffset(verifier, VT_POSITIONS) &&
+           verifier.VerifyVector(Positions()) &&
+           VerifyField<uint8_t>(verifier, VT_KNN) &&
+           VerifyOffset(verifier, VT_NORMALLISTS) &&
+           verifier.VerifyVector(NormalLists()) &&
+           verifier.VerifyVectorOfTables(NormalLists()) &&
+           verifier.EndTable();
+  }
+};
+
+struct PC_StructBuilder {
+  flatbuffers::FlatBufferBuilder &fbb_;
+  flatbuffers::uoffset_t start_;
+  void add_Positions(flatbuffers::Offset<flatbuffers::Vector<const Vec3f *>> Positions) {
+    fbb_.AddOffset(PC_Struct::VT_POSITIONS, Positions);
+  }
+  void add_KNN(uint8_t KNN) {
+    fbb_.AddElement<uint8_t>(PC_Struct::VT_KNN, KNN, 0);
+  }
+  void add_NormalLists(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<NormalsStruct>>> NormalLists) {
+    fbb_.AddOffset(PC_Struct::VT_NORMALLISTS, NormalLists);
+  }
+  explicit PC_StructBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  PC_StructBuilder &operator=(const PC_StructBuilder &);
+  flatbuffers::Offset<PC_Struct> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = flatbuffers::Offset<PC_Struct>(end);
+    return o;
+  }
+};
+
+inline flatbuffers::Offset<PC_Struct> CreatePC_Struct(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    flatbuffers::Offset<flatbuffers::Vector<const Vec3f *>> Positions = 0,
+    uint8_t KNN = 0,
+    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<NormalsStruct>>> NormalLists = 0) {
+  PC_StructBuilder builder_(_fbb);
+  builder_.add_NormalLists(NormalLists);
+  builder_.add_Positions(Positions);
+  builder_.add_KNN(KNN);
+  return builder_.Finish();
+}
+
+inline flatbuffers::Offset<PC_Struct> CreatePC_StructDirect(
+    flatbuffers::FlatBufferBuilder &_fbb,
+    const std::vector<Vec3f> *Positions = nullptr,
+    uint8_t KNN = 0,
+    const std::vector<flatbuffers::Offset<NormalsStruct>> *NormalLists = nullptr) {
+  auto Positions__ = Positions ? _fbb.CreateVectorOfStructs<Vec3f>(*Positions) : 0;
+  auto NormalLists__ = NormalLists ? _fbb.CreateVector<flatbuffers::Offset<NormalsStruct>>(*NormalLists) : 0;
+  return CreatePC_Struct(
+      _fbb,
+      Positions__,
+      KNN,
+      NormalLists__);
 }
 
 struct Resource FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
@@ -180,8 +438,11 @@ struct Resource FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     return GetPointer<const void *>(VT_TYPE);
   }
   template<typename T> const T *TYPE_as() const;
-  const RecMesh *TYPE_as_ReconstructedMesh() const {
-    return TYPE_type() == Resource_Type_ReconstructedMesh ? static_cast<const RecMesh *>(TYPE()) : nullptr;
+  const DGS_Model *TYPE_as_DGSMODEL() const {
+    return TYPE_type() == Resource_Type_DGSMODEL ? static_cast<const DGS_Model *>(TYPE()) : nullptr;
+  }
+  const PC_Struct *TYPE_as_PointCloud() const {
+    return TYPE_type() == Resource_Type_PointCloud ? static_cast<const PC_Struct *>(TYPE()) : nullptr;
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
@@ -192,8 +453,12 @@ struct Resource FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   }
 };
 
-template<> inline const RecMesh *Resource::TYPE_as<RecMesh>() const {
-  return TYPE_as_ReconstructedMesh();
+template<> inline const DGS_Model *Resource::TYPE_as<DGS_Model>() const {
+  return TYPE_as_DGSMODEL();
+}
+
+template<> inline const PC_Struct *Resource::TYPE_as<PC_Struct>() const {
+  return TYPE_as_PointCloud();
 }
 
 struct ResourceBuilder {
@@ -232,8 +497,12 @@ inline bool VerifyResource_Type(flatbuffers::Verifier &verifier, const void *obj
     case Resource_Type_NONE: {
       return true;
     }
-    case Resource_Type_ReconstructedMesh: {
-      auto ptr = reinterpret_cast<const RecMesh *>(obj);
+    case Resource_Type_DGSMODEL: {
+      auto ptr = reinterpret_cast<const DGS_Model *>(obj);
+      return verifier.VerifyTable(ptr);
+    }
+    case Resource_Type_PointCloud: {
+      auto ptr = reinterpret_cast<const PC_Struct *>(obj);
       return verifier.VerifyTable(ptr);
     }
     default: return false;

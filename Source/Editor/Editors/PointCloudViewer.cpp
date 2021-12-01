@@ -1,55 +1,31 @@
 #include "PointCloudViewer.h"
+#include "Ýþ/PointCloudTools.h"
+#include "Ýþ/PointCloudImports.h"
+#include "Ýþ/Options.h"
 
 #include "GFX/GFX_Core.h"
-#include "Editor/RenderContext/Game_RenderGraph.h"
-#include "GFX/GFX_Core.h"
-#include "Editor/RenderContext/Editor_DataManager.h"
 #include "Editor/Editor.h"
 #include <string>
-#include <pcl/point_types.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/filters/filter.h>
 
-static std::string PointCloudPATH = "C:/Users/furka/Desktop/KinectScan.pcd", PCViewerError = "";
-static unsigned int PointCloudHandle = UINT32_MAX;
-static Camera PCCamera;
-static PointCloud Shown_PC;
 #define DISPLAYWIDTH 960
 #define DISPLAYHEIGHT 540
 
-static Game_RenderGraph* RG = nullptr;
+//0 is triangle, 1 is lighting, 2 is normal
+unsigned int SurfaceMatInst_RenderModes[3] = { UINT32_MAX };
+
 
 PCViewer::PCViewer(Game_RenderGraph* RenderGraph) : IMGUI_WINDOW("PCViewer"){
 	IMGUI_REGISTERWINDOW(this);
 	RG = RenderGraph;
-}
-
-
-static bool isCameraMoving = false;
-static vec2 LastMousePos = vec2(0), Yaw_Pitch = vec2(0);
-static vec3 PointCloudCenter = vec3(0), PointCloudRotation(0);
-static float CameraSpeed_RelativeToBoundingSphere = 1.0f;
-static dvec3 CenterofPC(0); static double BoundingSphereRadiusofPC = 0.0;
-
-void DestroyPreviousPCViewerResources() {
-	if (PointCloudHandle != UINT32_MAX) {
-		GFXContentManager->Unload_PointBuffer(PointCloudHandle);
-		delete[] Shown_PC.PointPositions;
-		delete[] Shown_PC.PointNormals;
+	for (unsigned int rendermode = 0; rendermode < 3; rendermode++) {
+		SurfaceMatInst_RenderModes[rendermode] = TuranEditor::RenderDataManager::Create_SurfaceMaterialInstance(TuranEditor::SURFACEMAT_PROPERTIES(), nullptr, rendermode);
 	}
-	PointCloudHandle = 0;
-	PCCamera.Position = vec3(0);
-	PCCamera.Front_Vector = vec3(0, 0, 1);
-	CameraSpeed_RelativeToBoundingSphere = 1.0f;
-	PCViewerError = "";
-
-	Shown_PC.DifferentRepresentations.clear();
-	Shown_PC.PointCount = 0;
-	Shown_PC.PointNormals = nullptr;
-	Shown_PC.PointPositions = nullptr;
 }
+
 
 void PCViewer::Run_Window() {
+	static bool Display_PC = true;
+	static unsigned char MenuIndex = 255, MenuItemIndex = 255;
 	if (!Is_Window_Open) {
 		IMGUI_DELETEWINDOW(this);
 		return;
@@ -58,73 +34,64 @@ void PCViewer::Run_Window() {
 		IMGUI->End_Window();
 		return;
 	}
-	IMGUI->Input_Text("Point Cloud PATH", &PointCloudPATH);
-	if (IMGUI->Button("Load PCD")) {
-		pcl::PointCloud<pcl::PointXYZ> PCLCloud;
-		if (pcl::io::loadPCDFile<pcl::PointXYZ>(PointCloudPATH, PCLCloud) != -1) {
-			DestroyPreviousPCViewerResources();
-			PCLCloud.is_dense = false;
-			pcl::PointCloud<pcl::PointXYZ> noNaNPCLCloud;
-			std::vector<pcl::index_t> ind;
-			pcl::removeNaNFromPointCloud(PCLCloud, noNaNPCLCloud, ind);
-
-
-			Shown_PC.PointCount = noNaNPCLCloud.size();
-			Shown_PC.PointNormals = new vec3[Shown_PC.PointCount]{vec3(0)};
-			Shown_PC.PointPositions = new vec3[Shown_PC.PointCount]{vec3(0)};
-			for (unsigned int i = 0; i < Shown_PC.PointCount; i++) {
-				Shown_PC.PointPositions[i] = vec3(noNaNPCLCloud.points[i].x, noNaNPCLCloud.points[i].y, noNaNPCLCloud.points[i].z);
-			}
-			
-
-			//Upload the data, calculate the center and the bounding sphere radius
-			vector<vec3> DATA(Shown_PC.PointCount * 2);
-			for (unsigned int i = 0; i < Shown_PC.PointCount; i++) {
-				DATA[i] = Shown_PC.PointPositions[i];
-				CenterofPC += Shown_PC.PointPositions[i];
-				DATA[i + Shown_PC.PointCount] = Shown_PC.PointNormals[i];
-			}
-			CenterofPC = CenterofPC / dvec3(Shown_PC.PointCount);
-			for (unsigned int i = 0; i < Shown_PC.PointCount; i++) {
-				double dist = length(CenterofPC - dvec3(Shown_PC.PointPositions[i]));
-				if (dist > BoundingSphereRadiusofPC) { BoundingSphereRadiusofPC = dist; }
-			}
-
-			PCCamera.Position = CenterofPC - (dvec3(0, 0, 1) * dvec3(BoundingSphereRadiusofPC));
-			PCCamera.Front_Vector = vec3(0, 0, 1);
-			PCCamera.cameraSpeed_Base = CameraSpeed_RelativeToBoundingSphere * BoundingSphereRadiusofPC / 1000.0f;
-
-			PointCloudHandle = GFXContentManager->Upload_PointBuffer(TuranEditor::RenderDataManager::PositionNormal_VertexAttrib, DATA.data(), Shown_PC.PointCount);
-			if (PointCloudHandle == UINT32_MAX) {
-				LOG_CRASHING("Uploading the point buffer to GPU has failed!");
-			}
+	if (IMGUI->Begin_Menubar()) {
+		if (IMGUI->Begin_Menu("Import/Export")) {
+			MenuIndex = 0;
+			if (IMGUI->Menu_Item("Import Model")) { MenuItemIndex = 0; }
+			if (IMGUI->Menu_Item("Import .PCD")) { MenuItemIndex = 1; }
+			if (IMGUI->Menu_Item("Import/Export .PC")) { MenuItemIndex = 2; }
+			IMGUI->End_Menu();
 		}
-		else {
-			PCViewerError = "PCD file isn't found!";
+
+		if (IMGUI->Begin_Menu("Tools")) {
+			MenuIndex = 1;
+			if (IMGUI->Menu_Item("Object Detection")) { MenuItemIndex = 0; }
+			if (IMGUI->Menu_Item("Core Algorithms")) { MenuItemIndex = 1; }
+			if (IMGUI->Menu_Item("Normal Estimation")) { MenuItemIndex = 2; }
+			if (IMGUI->Menu_Item("Surface Reconstruction")) { MenuItemIndex = 3; }
+			IMGUI->End_Menu();
 		}
+
+		if (IMGUI->Begin_Menu("Options")) {
+			MenuIndex = 2;
+			if (IMGUI->Menu_Item("Camera")) { MenuItemIndex = 0; }
+			if (IMGUI->Menu_Item("Point Cloud")) { MenuItemIndex = 1; }
+			if (IMGUI->Menu_Item("Imported File")) { MenuItemIndex = 2; }
+			if (IMGUI->Menu_Item("Visibility")) { MenuItemIndex = 3; }
+			if (IMGUI->Menu_Item("RenderGraph")) { MenuItemIndex = 4; }
+			if (IMGUI->Menu_Item("Lighting")) { MenuItemIndex = 5; }
+
+			IMGUI->End_Menu();
+		}
+
+		IMGUI->End_Menubar();
 	}
-	IMGUI->Text(PCViewerError.c_str());
-	if (IMGUI->Begin_TabBar()) {
-		if (IMGUI->Begin_TabItem("Point Cloud Settings")) {
-
-			IMGUI->End_TabItem();
-		}
-
-		if (IMGUI->Begin_TabItem("Camera Settings")) {
-			if (IMGUI->Slider_Float("Camera Speed", &CameraSpeed_RelativeToBoundingSphere, 0.0f, 1.0f)) {
-				PCCamera.cameraSpeed_Base = CameraSpeed_RelativeToBoundingSphere * BoundingSphereRadiusofPC / 1000.0f;
-			}
-		}
-
-		IMGUI->End_TabBar();
+	switch (MenuIndex) {
+	case 0:
+		if (MenuItemIndex == 0) { PointCloudImports::ImportPolygonalModel(this);}
+		if (MenuItemIndex == 1) { PointCloudImports::ImportPCDFile(this); }
+		if (MenuItemIndex == 2) { PointCloudImports::ImportExport_DGSFile(this); }
+		break;
+	case 1:
+		if (MenuItemIndex == 0) { PointCloudTools::ObjectDetection(this); }
+		if (MenuItemIndex == 1) { PointCloudTools::CoreAlgorithms(this); }
+		if (MenuItemIndex == 2) { PointCloudTools::NormalEstimation(this); }
+		if (MenuItemIndex == 3) { PointCloudTools::SurfaceReconstruction(this); }
+		break;
+	case 2:
+		if (MenuItemIndex == 0) { PCViewerOptions::CameraOptions(this); }
+		if (MenuItemIndex == 1) { PCViewerOptions::PCOptions(this); }
+		if (MenuItemIndex == 2) { PCViewerOptions::ImportedFileOptions(this); }
+		if (MenuItemIndex == 3) { PCViewerOptions::VisibilityOptions(this); }
+		if (MenuItemIndex == 4) { PCViewerOptions::RenderGraphOptions(this); }
+		if (MenuItemIndex == 5) { PCViewerOptions::LightingOptions(this); }
+		break;
 	}
-	if (PointCloudHandle != UINT32_MAX) {
-		GFX_API::PointLineDrawCall LDC;
-		LDC.Draw_asPoint = true;
-		LDC.PointBuffer_ID = PointCloudHandle;
-		LDC.ShaderInstance_ID = TuranEditor::RenderDataManager::ShadedPoint_MatInst;
-		RG->Register_PointDrawCall(LDC);
-	}
+	IMGUI->Text(("Camera Front Vector X: " + std::to_string(PCCamera.Front_Vector.x) + " Y: " + std::to_string(PCCamera.Front_Vector.y) + " Z: " +
+		std::to_string(PCCamera.Front_Vector.z)).c_str());
+	IMGUI->Text(("Camera Position X: " + std::to_string(PCCamera.Position.x) + " Y: " + std::to_string(PCCamera.Position.y) + " Z: " +
+		std::to_string(PCCamera.Position.z)).c_str());
+
 
 	vec2 MousePos = IMGUI->GetMouseWindowPos() - IMGUI->GetItemWindowPos();
 	unsigned int DisplayTexture = GFXContentManager->Find_Framebuffer_byGFXID(((GFX_API::DrawPass*)RG->Get_RenderNodes()[0])->Get_FramebufferID())->BOUND_RTs[0].RT_ID;
@@ -156,8 +123,11 @@ void PCViewer::Run_Window() {
 	else {
 		isCameraMoving = false;
 	}
-	TuranEditor::RenderDataManager::FirstObjectPosition = PointCloudCenter;
-	TuranEditor::RenderDataManager::FirstObjectRotation = PointCloudRotation;
+	for (unsigned int i = 0; i < DisplayableDatas.size(); i++) {
+		if (DisplayableDatas[i]->isVisible) { DisplayableDatas[i]->Display(RG); }
+	}
+	TuranEditor::RenderDataManager::FirstObjectPosition = vec3(0);
+	TuranEditor::RenderDataManager::FirstObjectRotation = vec3(0);
 	TuranEditor::RenderDataManager::CameraPos = PCCamera.Position;
 	TuranEditor::RenderDataManager::FrontVec = PCCamera.Front_Vector;
 
@@ -165,6 +135,67 @@ void PCViewer::Run_Window() {
 
 
 	IMGUI->End_Window();
+}
+
+//If there is no displayable data of specified kind, itemsddindex will be UINT32_MAX
+bool PCViewer::SelectListOneLine_FromDisplayableDatas(DisplayableData::DataType TYPE, unsigned int& selectedlistitemindex, unsigned int& itemsddindex, const char* ListName) {
+	vector<unsigned int> PCs;
+	for (unsigned int i = 0; i < DisplayableDatas.size(); i++) {
+		for (unsigned int namecheck_i = i + 1; namecheck_i < DisplayableDatas.size(); namecheck_i++) {
+			if (DisplayableDatas[i]->NAME == DisplayableDatas[namecheck_i]->NAME) { DisplayableDatas[namecheck_i]->NAME += "_Copy(1)"; }
+		}
+	}
+	if (TYPE == DisplayableData::DataType::ALL) {
+		for (unsigned int i = 0; i < DisplayableDatas.size(); i++) {
+			PCs.push_back(i);
+		}
+	}
+	else {
+		for (unsigned int i = 0; i < DisplayableDatas.size(); i++) {
+			if (DisplayableDatas[i]->TYPE == TYPE) {
+				PCs.push_back(i);
+			}
+		}
+	}
+	vector<const char*> PC_NAMEs(PCs.size(), "NaN");
+	for (unsigned int i = 0; i < PCs.size(); i++) {
+		PC_NAMEs[i] = DisplayableDatas[PCs[i]]->NAME.c_str();
+	}
+	if (!PC_NAMEs.size()) {
+		itemsddindex = UINT32_MAX;
+		return false;
+	}
+	selectedlistitemindex = std::min(selectedlistitemindex, unsigned int(PC_NAMEs.size() - 1));
+	bool r = IMGUI->SelectList_OneLine(ListName, &selectedlistitemindex, PC_NAMEs);
+	itemsddindex = PCs[selectedlistitemindex];
+	return r;
+}
+
+
+PCViewer::TriangleModel::TriangleModel() { TYPE = TRIANGLEMODEL; }
+void PCViewer::TriangleModel::Display(Game_RenderGraph* RenderGraph) {
+	if (NonIndexed_VertexBuffers.size() != GPUMESH_IDs.size()) {
+		LOG_CRASHING("Triangle model " + NAME + " has unmatching GPUMESH_IDs-NonIndexed_VertexBuffers arrays!");
+	}
+	if (DisplayedVertexBuffers.size() != NonIndexed_VertexBuffers.size()) {
+		LOG_CRASHING("Triangle model " + NAME + " has unmatching DisplayedVertexBuffers-NonIndexed_VertexBuffers arrays!");
+	}
+	for (unsigned int i = 0; i < DisplayedVertexBuffers.size(); i++) {
+		if (!DisplayedVertexBuffers[i]) {
+			continue;
+		}
+		 
+		GFX_API::DrawCall DC;
+		DC.JoinedDrawPasses = 0xFF;
+		DC.MeshBuffer_ID = GPUMESH_IDs[i];
+		DC.ShaderInstance_ID = SurfaceMatInst_RenderModes[RENDERINGMODE];
+		RenderGraph->Register_DrawCall(DC);
+	}
+}
+
+PCViewer::PointCloud_DD::PointCloud_DD() { TYPE = POINTCLOUD; }
+void PCViewer::PointCloud_DD::Display(Game_RenderGraph* RenderGraph) {
+	PCRenderer->RenderThisFrame();
 }
 
 PCViewer::~PCViewer() {

@@ -36,7 +36,7 @@ namespace GFX_API {
 		//Create a menubar for a IMGUI window!
 		bool Begin_Menubar();
 		void End_Menubar();
-		//Create a menu button! Returns if it is clicked!
+		//Create a menu button! Returns true if it is clicked!
 		bool Begin_Menu(const char* name);
 		void End_Menu();
 		//Create a item for a menu! Shortcut argument is just use for the future support, nothing functional for now.

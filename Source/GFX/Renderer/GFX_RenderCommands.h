@@ -2,6 +2,7 @@
 #include "GFX/GFX_Includes.h"
 #include "GFX/GFX_ENUMs.h"
 #include "GFX_Resource.h"
+#include "GFX/GFX_FileSystem/Resource_Type/Material_Type_Resource.h"
 
 namespace GFX_API {
 	/*
@@ -24,5 +25,14 @@ namespace GFX_API {
 		bool Draw_asPoint;	//True -> Draw as Point, False -> Draw as Line
 		unsigned int ShaderInstance_ID;
 		unsigned int PointBuffer_ID;
+	};
+
+
+	struct GFXAPI SpecialDrawCall {
+		unsigned int ShaderInstance_ID, VERTEXCOUNT;
+		std::vector<Material_Uniform> OverridenUniforms;
+		//If you are gonna render triangles as lines, this should be true.
+		//If you are gonna render triangles filled, this should be false.
+		bool isLine;
 	};
 }
