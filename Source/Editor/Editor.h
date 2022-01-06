@@ -18,6 +18,7 @@
 #include "Editor/TUBITAK/Algorithms.h"
 #include "Editor/TUBITAK/Algorithms_UnitTests.h"
 
+
 namespace TuranEditor {
 	class Editor_System {
 		TuranAPI::Logging::Logger LOGGING;

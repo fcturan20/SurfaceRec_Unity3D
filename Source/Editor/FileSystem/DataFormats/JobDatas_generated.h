@@ -4,7 +4,8 @@
 #ifndef FLATBUFFERS_GENERATED_JOBDATAS_H_
 #define FLATBUFFERS_GENERATED_JOBDATAS_H_
 
-#include "flatbuffers/flatbuffers.h"
+#include <flatbuffers/flatbuffers.h>
+#include <flatbuffers/flatbuffers.h>
 
 struct Vec3f;
 

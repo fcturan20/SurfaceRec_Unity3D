@@ -66,3 +66,4 @@ namespace TuranAPI {
 //Some basic functionality to do debugging!
 #define GET_VARIABLE_NAME(Variable) (#Variable)
 #define SLEEP_THREAD(Variable) std::this_thread::sleep_for(std::chrono::seconds(Variable));
+#define TAPIHANDLE(object) typedef struct tapi_dontuse_##object * tapi_##object;

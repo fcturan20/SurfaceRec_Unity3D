@@ -1,7 +1,7 @@
 #include "PointCloudViewer.h"
-#include "Ýþ/PointCloudTools.h"
-#include "Ýþ/PointCloudImports.h"
-#include "Ýþ/Options.h"
+#include "Biligoba/PointCloudImports.h"
+#include "Biligoba/PointCloudTools.h"
+#include "Biligoba/Options.h"
 
 #include "GFX/GFX_Core.h"
 #include "Editor/Editor.h"
@@ -174,12 +174,13 @@ bool PCViewer::SelectListOneLine_FromDisplayableDatas(DisplayableData::DataType 
 
 PCViewer::TriangleModel::TriangleModel() { TYPE = TRIANGLEMODEL; }
 void PCViewer::TriangleModel::Display(Game_RenderGraph* RenderGraph) {
+	/*
 	if (NonIndexed_VertexBuffers.size() != GPUMESH_IDs.size()) {
 		LOG_CRASHING("Triangle model " + NAME + " has unmatching GPUMESH_IDs-NonIndexed_VertexBuffers arrays!");
 	}
 	if (DisplayedVertexBuffers.size() != NonIndexed_VertexBuffers.size()) {
 		LOG_CRASHING("Triangle model " + NAME + " has unmatching DisplayedVertexBuffers-NonIndexed_VertexBuffers arrays!");
-	}
+	}*/
 	for (unsigned int i = 0; i < DisplayedVertexBuffers.size(); i++) {
 		if (!DisplayedVertexBuffers[i]) {
 			continue;

@@ -1,11 +1,13 @@
 #include "Editor.h"
 #include "OpenGL4/OGL4_Core.h"
+#include "TuranAPI/ThreadedJobCore.h"
 
 #include "RenderContext/Editor_DataManager.h"
 
 namespace TuranEditor {
 	Editor_System::Editor_System() {
 		new OpenGL4::OpenGL4_Core;
+		tapi_JobSystem_Start(&threading_system);
 	}
 	Editor_System::~Editor_System() {
 		((OpenGL4::OpenGL4_Core*)GFX)->~OpenGL4_Core();

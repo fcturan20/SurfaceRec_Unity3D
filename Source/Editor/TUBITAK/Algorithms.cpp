@@ -2,10 +2,9 @@
 #include "TuranAPI/Logger_Core.h"
 #include "TuranAPI/Profiler_Core.h"
 #include <array>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/dense>
 #include <Eigen/Eigenvalues>
-#include "3rdPartyLibs/Normals.h"
-#include "delaunator.hpp"
+//#include "3rdPartyLibs/Normals.h"
 #include "GFX/GFX_Core.h"
 #include "Editor/RenderContext/Editor_DataManager.h"
 #include "Editor/RenderContext/Game_RenderGraph.h"
@@ -73,7 +72,7 @@ void TuranEditor::Algorithms::Generate_KDTree(PointCloud& Cloud) {
 		LOG_ERROR("Cloud is empty!");
 		return;
 	}
-
+	LOG_STATUS("Generating KDTree!");
 	for (unsigned int i = 0; i < Cloud.DifferentRepresentations.size(); i++) {
 		if (Cloud.DifferentRepresentations[i].RepresentationIndex == 0) {
 			return;
@@ -271,6 +270,7 @@ vector<vec3> TuranEditor::Algorithms::Compute_PCA(const vector<vec3>& points) {
 	return PCA_Vectors;
 }
 vector<vec3> TuranEditor::Algorithms::ProjectPoints_OnPlane_thenTriangulate(const vector<vec3>& points, vec3 Tangent, vec3 Bitangent, vec3 Normal, vector<Triangle>* Faces, vector<Edge>* Edges) {
+	/*
 	vector<vec3> Triangulation;
 
 	//Calculate center of mass of points
@@ -455,6 +455,8 @@ vector<vec3> TuranEditor::Algorithms::ProjectPoints_OnPlane_thenTriangulate(cons
 	}
 
 	return Triangulation;
+	*/
+return vector<vec3>();
 }
 bool TuranEditor::Algorithms::rayTriangleIntersect(const vec3& orig, const vec3& dir, const vec3& v0, const vec3& v1, const vec3& v2, float& t)
 {
@@ -651,6 +653,7 @@ private:
 
 };
 vector<vec3> TuranEditor::Algorithms::HoughBasedNormalReconstruction(const PointCloud& cloud, bool flip_normals, unsigned int K, unsigned int T, unsigned int n_phi, unsigned int n_rot, bool ua, float tol_angle_rad, unsigned int k_density) {
+	/*
 	LOG_STATUS("Normal estimation based on Hough Transform has started!");
 	vector<vec3> Normals(cloud.PointCount);
 	Eigen::MatrixX3d pc, normals;
@@ -701,7 +704,7 @@ vector<vec3> TuranEditor::Algorithms::HoughBasedNormalReconstruction(const Point
 			KNeighbor_forFlipSearch++;
 		}
 	}
-
+	*/
 	//Basic propagation using Reimannian Edges
 	/*
 	bool isthereUnflipped = true;
@@ -754,7 +757,7 @@ vector<vec3> TuranEditor::Algorithms::HoughBasedNormalReconstruction(const Point
 		}
 	}*/
 
-
+/*
 	//Sorted and Weighted Edges
 	vector<ReimannianEdge> WeightedReimannianEdges(RGraph.Edges.size());
 	float lastMINweight = FLT_MIN;
@@ -803,8 +806,8 @@ vector<vec3> TuranEditor::Algorithms::HoughBasedNormalReconstruction(const Point
 			Normals[NormalIndex] = -Normals[NormalIndex];
 		}
 	}
-
-	return Normals;
+	*/
+	return vector<vec3>();
 }
 
 
@@ -1014,6 +1017,7 @@ void Reconstruction_Type2(PointCloud* CLOUD, unsigned char KNearestNeighor, vect
 
 #include "3rdPartyLibs/tetgen.h"
 void Reconstruction_Type3(PointCloud* CLOUD, vector<vec3>& TriangulatedPositionsOutput, vector<vec3>& TriangulatedNormalsOutput) {
+	/*
 	tetgenio in, out;
 	LOG_STATUS("Cloud Point Count: " + to_string(CLOUD->PointCount));
 
@@ -1088,7 +1092,7 @@ void Reconstruction_Type3(PointCloud* CLOUD, vector<vec3>& TriangulatedPositions
 		TriangulatedNormalsOutput[(TetraHedronIndex * 12) + 9] = vec3(1, 0, 0);
 		TriangulatedNormalsOutput[(TetraHedronIndex * 12) + 10] = vec3(0, 1, 0);
 		TriangulatedNormalsOutput[(TetraHedronIndex * 12) + 11] = vec3(0, 0, 1);
-	}
+	}*/
 }
 
 void SaveReconstructedSurface(const char* PATH, const vector<vec3>& TriangulatedPositions, const vector<vec3>& TriangulatedNormals, unsigned char KNN, unsigned char Type) {
@@ -1517,8 +1521,8 @@ vector<float> TuranEditor::Algorithms::SDF_FromVertexBuffer(const std::vector<ve
 }
 
 
-#include "Editor/TUBITAK/MarchingCubes_LookUpTable.h"
 vector<vec3> TuranEditor::Algorithms::MarchingCubes(uvec3 SDFResolution, const vector<float>& SDFs, const vector<vec3>& SamplePositions, const PointCloud* RefPC, vector<vec3>* OutputNormals) {
+#include "Editor/TUBITAK/MarchingCubes_LookUpTable.h"
 	if (SDFs.size() != SamplePositions.size()) {
 		LOG_CRASHING("SDFs and SampleLocations isn't matching!");
 		return vector<vec3>();
@@ -1941,7 +1945,7 @@ bool TuranEditor::Algorithms::Progressive_HoughBasedPlaneDetection(PointCloud* C
 
 }
 
-
+/*
 #include <libqhullcpp/Qhull.h>
 #include <libqhullcpp/QhullLinkedList.h>
 #include <libqhullcpp/QhullPoints.h>
@@ -1950,7 +1954,7 @@ bool TuranEditor::Algorithms::Progressive_HoughBasedPlaneDetection(PointCloud* C
 #include <libqhullcpp/QhullUser.h>
 #include <libqhullcpp/QhullIterator.h>
 #include <libqhullcpp/QhullSet.h>
-#include <libqhullcpp/QhullVertexSet.h>
+#include <libqhullcpp/QhullVertexSet.h>*/
 /*
 unsigned int TuranEditor::Algorithms::VoronoiDiagram::AddVoronoiEdge(unsigned int EdgePoint0, unsigned int EdgePoint1) {
 	if (EdgePoint0 >= VoronoiVertices.size() || EdgePoint1 >= VoronoiVertices.size()) {
@@ -1969,6 +1973,7 @@ unsigned int TuranEditor::Algorithms::VoronoiDiagram::AddVoronoiEdge(unsigned in
 	VoronoiEdges.push_back(edge);
 	return VoronoiEdges.size() - 1;
 }*/
+/*
 TuranEditor::Algorithms::VoronoiDiagram* TuranEditor::Algorithms::CreateVoronoiDiagram(PointCloud* CLOUD) {
 	orgQhull::Qhull x;
 	static constexpr unsigned int Dim = 3;
@@ -2084,7 +2089,7 @@ TuranEditor::Algorithms::VoronoiDiagram* TuranEditor::Algorithms::CreateVoronoiD
 			if (!f.isGood()) {
 				// ignore facet
 			}
-			else if (!f.isTopOrient() && f.isSimplicial()) { /* orient the vertices like option 'o' */
+			else if (!f.isTopOrient() && f.isSimplicial()) { // orient the vertices like option 'o' 
 				orgQhull::QhullVertexSet vs = f.vertices();
 				vertices.push_back(vs[1].point().id());
 				vertices.push_back(vs[0].point().id());
@@ -2093,7 +2098,7 @@ TuranEditor::Algorithms::VoronoiDiagram* TuranEditor::Algorithms::CreateVoronoiD
 				}
 				facetVertices.push_back(vertices);
 			}
-			else {  /* note: for non-simplicial facets, this code does not duplicate option 'o', see qh_facet3vertex and qh_printfacetNvertex_nonsimplicial */
+			else {  // note: for non-simplicial facets, this code does not duplicate option 'o', see qh_facet3vertex and qh_printfacetNvertex_nonsimplicial 
 			   // for(QhullVertex vertex : f.vertices()){
 				orgQhull::QhullVertexSetIterator k(f.vertices());
 				while (k.hasNext()) {
@@ -2119,10 +2124,10 @@ TuranEditor::Algorithms::VoronoiDiagram* TuranEditor::Algorithms::CreateVoronoiD
 				std::cin >> ZaWarudo;
 			}
 
-			/*
-			diagram->VoronoiRegions[RegionIndex].EdgeIDs.push_back(diagram->AddVoronoiEdge(VertexIDs[0], VertexIDs[2]));
-			diagram->VoronoiRegions[RegionIndex].EdgeIDs.push_back(diagram->AddVoronoiEdge(VertexIDs[0], VertexIDs[2]));
-			diagram->VoronoiRegions[RegionIndex].EdgeIDs.push_back(diagram->AddVoronoiEdge(VertexIDs[0], VertexIDs[1]));*/
+			
+			//diagram->VoronoiRegions[RegionIndex].EdgeIDs.push_back(diagram->AddVoronoiEdge(VertexIDs[0], VertexIDs[2]));
+			//diagram->VoronoiRegions[RegionIndex].EdgeIDs.push_back(diagram->AddVoronoiEdge(VertexIDs[0], VertexIDs[2]));
+			//diagram->VoronoiRegions[RegionIndex].EdgeIDs.push_back(diagram->AddVoronoiEdge(VertexIDs[0], VertexIDs[1]));
 			VoronoiDiagram::VoronoiTriangle tri;
 			tri.Vertexes[0] = vec3(VertexPositions[vertices[0] * 3], VertexPositions[(vertices[0] * 3) + 1], VertexPositions[(vertices[0] * 3) + 2]);
 			tri.Vertexes[1] = vec3(VertexPositions[vertices[1] * 3], VertexPositions[(vertices[1] * 3) + 1], VertexPositions[(vertices[1] * 3) + 2]);
@@ -2133,4 +2138,4 @@ TuranEditor::Algorithms::VoronoiDiagram* TuranEditor::Algorithms::CreateVoronoiD
 	}
 	
 	return diagram;
-}
+}*/

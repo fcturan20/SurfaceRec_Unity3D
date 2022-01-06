@@ -122,7 +122,7 @@ namespace TuranEditor {
 		unsigned int VSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Vertex Shader!\n");
-			string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/SurfaceUberShader.vert");
+			string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile((string(SOURCE_DIR) + "/Content/SurfaceUberShader.vert").c_str());
 			ShaderSource_Resource* VertexShader = new ShaderSource_Resource;
 			VertexShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			VertexShader->STAGE = GFX_API::SHADER_STAGE::VERTEXSTAGE;
@@ -142,7 +142,7 @@ namespace TuranEditor {
 		unsigned int FSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Fragment Shader!\n");
-			string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/SurfaceUberShader.frag");
+			string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile((string(SOURCE_DIR) + "/Content/SurfaceUberShader.frag").c_str());
 			ShaderSource_Resource* FragmentShader = new ShaderSource_Resource;
 			FragmentShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			FragmentShader->STAGE = GFX_API::SHADER_STAGE::FRAGMENTSTAGE;
@@ -201,7 +201,7 @@ namespace TuranEditor {
 		unsigned int VSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Vertex Shader!\n");
-			string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PointRendererShader.vert");
+			string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile((string(SOURCE_DIR) + "/Content/PointRendererShader.vert").c_str());
 			ShaderSource_Resource* VertexShader = new ShaderSource_Resource;
 			VertexShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			VertexShader->STAGE = GFX_API::SHADER_STAGE::VERTEXSTAGE;
@@ -221,7 +221,7 @@ namespace TuranEditor {
 		unsigned int GSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Geometry Shader!\n");
-			string* GEOMETRYSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PointRendererShader.gs");
+			string* GEOMETRYSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile((string(SOURCE_DIR) + "/Content/PointRendererShader.gs").c_str());
 			ShaderSource_Resource* GeometryShader = new ShaderSource_Resource;
 			GeometryShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			GeometryShader->STAGE = GFX_API::SHADER_STAGE::GEOMETRYSTAGE;
@@ -241,7 +241,7 @@ namespace TuranEditor {
 		unsigned int FSSOURCE_ID = 0;
 		{
 			LOG_STATUS("Loading Fragment Shader!\n");
-			string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PointRendererShader.frag");
+			string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile((string(SOURCE_DIR) + "/Content/PointRendererShader.frag").c_str());
 			ShaderSource_Resource* FragmentShader = new ShaderSource_Resource;
 			FragmentShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 			FragmentShader->STAGE = GFX_API::SHADER_STAGE::FRAGMENTSTAGE;
@@ -554,7 +554,7 @@ namespace TuranEditor {
 			unsigned int VSSOURCE_ID = 0;
 			{
 				LOG_STATUS("Loading Vertex Shader!\n");
-				string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PlaneRendererShader.vert");
+				string* VERTEXSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile((string(SOURCE_DIR) + "/Content/PlaneRendererShader.vert").c_str());
 				ShaderSource_Resource* VertexShader = new ShaderSource_Resource;
 				VertexShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 				VertexShader->STAGE = GFX_API::SHADER_STAGE::VERTEXSTAGE;
@@ -574,7 +574,7 @@ namespace TuranEditor {
 			unsigned int FSSOURCE_ID = 0;
 			{
 				LOG_STATUS("Loading Fragment Shader!\n");
-				string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile("D:/dev/GeometryProcessing/Content/PlaneRendererShader.frag");
+				string* FRAGMENTSHADER_SOURCE = TAPIFILESYSTEM::Read_TextFile((string(SOURCE_DIR) + "/Content/PlaneRendererShader.frag").c_str());
 				ShaderSource_Resource* FragmentShader = new ShaderSource_Resource;
 				FragmentShader->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 				FragmentShader->STAGE = GFX_API::SHADER_STAGE::FRAGMENTSTAGE;
