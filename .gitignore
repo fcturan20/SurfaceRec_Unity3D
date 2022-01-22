@@ -1,0 +1,7 @@
+build
+errors.txt
+logs.txt
+notcodedpaths.txt
+warnings.txt
+imgui.ini
+.vs
