@@ -2,14 +2,23 @@
 #include "Editor/TUBITAK/Algorithms.h"
 #include "TuranAPI/ThreadedJobCore.h"
 #include "TuranAPI/Profiler_Core.h"
+#include "Editor/RenderContext/Compute Passes/MC.h"
 
 string IMPORTNAME = "";
 PCViewer::TriangleModel* lastgeneratedmodel = nullptr;
 unsigned int LASTUSED_selectedddindex = UINT32_MAX;
 static PCViewer* Viewer = nullptr;
 
+enum class ReconstructionMethod : unsigned char{
+	SINGLETHREADEDCPU = 0,
+	MULTIHREADEDCPU = 1,
+	MULTITHREADEDSDF_GPUMC = 2
+};
+static ReconstructionMethod rec_method;
+static unsigned int selected_methodi = 0;
+const vector<const char*> method_names = {"Single Threaded CPU", "Multithreaded CPU", "Multithreaded SDF, GPU MC"};
+
 //Multi-threading
-static bool is_multithreaded = false;
 static std::atomic_uint processing_jobindex = 0, finished_jobindex = 0;
 static unsigned int sdf_jobcount = 24, mc_jobcount = 24, sdf_elementcount_perjob, mc_elementcount_perjob, sdf_lastjob_elementcount, mc_lastjob_elementcount;
 static vector<float> SDFValues;
@@ -165,11 +174,18 @@ void SurfaceRec() {
 		SDFRes = SDFResNaive * SDFResMultiplier;
 		IMGUI->Checkbox("Show SDF Volume", &ShowSDFVolume);
 		IMGUI->Same_Line();
-		IMGUI->Checkbox("Multi-Threaded", &is_multithreaded);
+		if(IMGUI->SelectList_OneLine("Method", &selected_methodi, method_names)){
+			if(selected_methodi == 0){rec_method = ReconstructionMethod::SINGLETHREADEDCPU;}
+			if(selected_methodi == 1){rec_method = ReconstructionMethod::MULTIHREADEDCPU;}
+			if(selected_methodi == 2){rec_method = ReconstructionMethod::MULTITHREADEDSDF_GPUMC;}
+		}
 		if (IMGUI->Button("Reconstruct") && selectedNormalListIndex != UINT32_MAX) {
-			TuranEditor::Algorithms::Generate_KDTree(pc_dd->PC);
+			{
+				TURAN_PROFILE_SCOPE("KDTree Generation");
+				TuranEditor::Algorithms::Generate_KDTree(pc_dd->PC);
+			}
 
-			if(is_multithreaded){
+			if(rec_method == ReconstructionMethod::MULTIHREADEDCPU){
 				SDFValues.clear();
 				SDFValues.resize(SDFRes * SDFRes * SDFRes, FLT_MAX);
 				MC_Results.resize(mc_jobcount);
@@ -186,7 +202,7 @@ void SurfaceRec() {
 				mc_lastjob_elementcount = mc_elementcount_perjob + (((SDFRes - 1) * (SDFRes - 1) * (SDFRes - 1)) % mc_jobcount);
 				
 				{
-					TURAN_PROFILE_SCOPE("Reconstruction");
+					TURAN_PROFILE_SCOPE("SDF");
 					for(unsigned int i = 0; i < sdf_jobcount; i++){
 						tapi_Execute_withoutWait(threading_system, MultiThreaded_SDFSampling);
 					}
@@ -195,6 +211,9 @@ void SurfaceRec() {
 						LOG_CRASHING("SDF Sync failed!");
 					}
 					processing_jobindex.store(0); finished_jobindex.store(0);
+				}
+				{
+					TURAN_PROFILE_SCOPE("MC");
 					for(unsigned int i = 0; i < mc_jobcount; i++){
 						tapi_Execute_withoutWait(threading_system, MultiThreaded_MC);
 					}
@@ -241,7 +260,7 @@ void SurfaceRec() {
 			
 				Viewer->DisplayableDatas.push_back(trimodel);
 			}
-			else{
+			else if(rec_method == ReconstructionMethod::SINGLETHREADEDCPU){
 				
 				unsigned int RECONSTRUCTEDMESH_ID = UINT32_MAX;
 				vector<vec3> SampleLocations;
@@ -282,7 +301,9 @@ void SurfaceRec() {
 			
 				Viewer->DisplayableDatas.push_back(trimodel);
 			}
-
+			else if(rec_method == ReconstructionMethod::MULTITHREADEDSDF_GPUMC){
+				
+			}
 		}
 		if (ShowSDFVolume && samplepoint_renderer) {
 			samplepoint_renderer->RenderThisFrame();
