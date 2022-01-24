@@ -56,8 +56,8 @@ namespace GFX_API {
 		virtual void Unload_AllResources() = 0;
 
 		//Return MeshBufferID to use in Draw Calls
-		virtual unsigned int Upload_MeshBuffer(const VertexAttributeLayout& attributelayout, const void* vertex_data, unsigned int data_size, unsigned int vertex_count, 
-			const void* index_data, unsigned int index_count) = 0;
+		virtual unsigned int Upload_MeshBuffer(const VertexAttributeLayout& attributelayout, const void* vertex_data, 
+			unsigned int data_size, unsigned int vertex_count, const void* index_data, unsigned int index_count) = 0;
 		//When you call this function, Draw Calls that uses this ID may draw another Mesh or crash
 		virtual void Unload_MeshBuffer(unsigned int MeshBuffer_ID) = 0;
 
@@ -78,6 +78,8 @@ namespace GFX_API {
 		//Also if the data's size isn't changed since the last time, you can pass as 0.
 		//If DATA isn't nullptr, old data that buffer holds will be deleted!
 		virtual void Upload_GlobalBuffer(unsigned int BUFFER_ID, const void* DATA = nullptr, unsigned int DATA_SIZE = 0) = 0;
+		virtual const void* StartReading_GlobalBuffer(unsigned int BufferID, OPERATION_TYPE optype) = 0;
+		virtual void FinishReading_GlobalBuffer(unsigned int BufferID) = 0;
 		virtual void Unload_GlobalBuffer(unsigned int BUFFER_ID) = 0;
 
 

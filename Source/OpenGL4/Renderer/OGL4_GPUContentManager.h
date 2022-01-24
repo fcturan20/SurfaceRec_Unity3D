@@ -51,6 +51,8 @@ namespace OpenGL4 {
 
 		virtual unsigned int Create_GlobalBuffer(const char* BUFFER_NAME, void* DATA, unsigned int DATA_SIZE, GFX_API::BUFFER_VISIBILITY USAGE) override;
 		virtual void Upload_GlobalBuffer(unsigned int BUFFER_ID, const void* DATA = nullptr, unsigned int DATA_SIZE = 0) override;
+		virtual const void* StartReading_GlobalBuffer(unsigned int BufferID, GFX_API::OPERATION_TYPE optype) override;
+		virtual void FinishReading_GlobalBuffer(unsigned int BufferID) override;
 		virtual void Unload_GlobalBuffer(unsigned int BUFFER_ID) override;
 
 

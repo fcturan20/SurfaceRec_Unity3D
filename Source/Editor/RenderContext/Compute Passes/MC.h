@@ -6,9 +6,9 @@
 
 
 class MC_ComputePass : public GFX_API::ComputePass {
-	virtual void Execute() override;
 	bool* finish_flag = nullptr;
 public:
+	virtual void Execute() override;
 	MC_ComputePass();
-	void RunMC(std::vector<float> SDFSamples, dvec3 BOUNDINGMIN, dvec3 BOUNDINGMAX, float samplingD);
+	void RunMC(std::vector<float> SDFSamples, dvec3 BOUNDINGMIN, dvec3 BOUNDINGMAX, float samplingD, unsigned int SDFRes, vec3* result);
 };

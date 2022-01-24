@@ -393,6 +393,32 @@ namespace OpenGL4 {
 			}
 		}
 	}
+	const void* GPU_ContentManager::StartReading_GlobalBuffer(unsigned int BufferID, GFX_API::OPERATION_TYPE optype) {
+		GFX_API::GFX_Buffer* BUFFER = Find_GlobalBuffer_byBufferID(BufferID);
+		if (BUFFER) {
+			if (BUFFER->GL_ID) {
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, *(unsigned int*)BUFFER->GL_ID);
+				return glMapBuffer(GL_SHADER_STORAGE_BUFFER, Find_OGLOperationType(optype));
+			}
+			else {
+				LOG_ERROR("You shouldn't call Upload_GlobalBuffer(), if you didn't create it with Create_GlobalBuffer()!");
+				return nullptr;
+			}
+		}
+	}
+	void GPU_ContentManager::FinishReading_GlobalBuffer(unsigned int BufferID) {
+		GFX_API::GFX_Buffer* BUFFER = Find_GlobalBuffer_byBufferID(BufferID);
+		if (BUFFER) {
+			if (BUFFER->GL_ID) {
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, *(unsigned int*)BUFFER->GL_ID);
+				glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+			}
+			else {
+				LOG_ERROR("You shouldn't call Upload_GlobalBuffer(), if you didn't create it with Create_GlobalBuffer()!");
+				return;
+			}
+		}
+	}
 	void GPU_ContentManager::Unload_GlobalBuffer(unsigned int BUFFER_ID) {
 		GFX_API::GFX_Buffer* BUFFER = nullptr;
 		unsigned int vector_index = 0;

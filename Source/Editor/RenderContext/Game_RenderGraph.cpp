@@ -4,6 +4,7 @@
 #include "Editor/FileSystem/ResourceTypes/ResourceTYPEs.h"
 #include "Editor/FileSystem/ResourceTypes/Resource_Identifier.h"
 #include "GFX/GFX_Core.h"
+#include "Compute Passes/MC.h"
 
 Game_RenderGraph::Game_RenderGraph() : RenderGraph("Game RenderGraph") {
 	LOG_STATUS("Game RenderGraph object is created!");
@@ -50,6 +51,11 @@ Game_RenderGraph::Game_RenderGraph() : RenderGraph("Game RenderGraph") {
 	GFXContentManager->Create_Texture(DEPTH_RT, DEPTHRT_RESOURCE->ID);
 	MainDrawPass_SLOTs[1].RT_ID = DEPTHRT_RESOURCE->ID;
 	MainPass->RenderGraph_SetupPhase(MainDrawPass_SLOTs);
+
+
+
+	GFX_API::ComputePass* ComputePass = new MC_ComputePass;
+	RENDER_NODEs.push_back(ComputePass);
 }
 
 void Game_RenderGraph::Run_RenderGraph() {
@@ -66,6 +72,9 @@ void Game_RenderGraph::Run_RenderGraph() {
 	MainPass->Execute();
 	DrawCalls.clear();
 	PointDrawCallBuffer.clear();
+
+	MC_ComputePass* MC_CP = (MC_ComputePass*)RENDER_NODEs[1];
+	MC_CP->Execute();
 
 
 	//Display the final result on main window!
