@@ -1,3 +1,4 @@
+#pragma once
 #include "Editor/Editor_Includes.h"
 #include "GFX/GFX_Includes.h"
 #include "GFX/Renderer/GFX_Resource.h"

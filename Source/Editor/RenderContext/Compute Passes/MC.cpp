@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 static unsigned int CS_TYPE_ID = 0, CS_INST_ID = 0, LOOKUPTABLE_UB_ID = 0, SDFSAMPLES_ID = 0, MCRESULTS_ID = 0;
 static vec3* results;
+static bool should_execute = false;
 
 //Uniforms
 static float samplingD = 0.0;
@@ -22,8 +23,8 @@ MC_ComputePass::MC_ComputePass() {
 	cs_type->LANGUAGE = GFX_API::SHADER_LANGUAGEs::GLSL;
 	cs_type->SOURCE_CODE = *TAPIFILESYSTEM::Read_TextFile((string(SOURCE_DIR) + "/Content/MC.comp").c_str());
 
-	unsigned int SDFsamples_id = GFXContentManager->Create_GlobalBuffer("SDFSamples", nullptr, 80 * 80 * 80 * 4, GFX_API::BUFFER_VISIBILITY::CPUREADWRITE_GPUREADWRITE);
-	unsigned int MCResults_id = GFXContentManager->Create_GlobalBuffer("MCResults", nullptr, 79 * 79 * 79 * 15 * 12, GFX_API::BUFFER_VISIBILITY::CPUREADWRITE_GPUREADWRITE);
+	SDFSAMPLES_ID = GFXContentManager->Create_GlobalBuffer("SDFSamples", nullptr, 80 * 80 * 80 * 4, GFX_API::BUFFER_VISIBILITY::CPUREADWRITE_GPUREADWRITE);
+	MCRESULTS_ID = GFXContentManager->Create_GlobalBuffer("MCResults", nullptr, 79 * 79 * 79 * 15 * 12, GFX_API::BUFFER_VISIBILITY::CPUREADWRITE_GPUREADWRITE);
 	//Set Global Buffers
 	{
 		GFX_API::GlobalBuffer_Access lookup_access;
@@ -33,12 +34,12 @@ MC_ComputePass::MC_ComputePass() {
 
 		GFX_API::GlobalBuffer_Access SDFSamples;
 		SDFSamples.ACCESS_TYPE = GFX_API::OPERATION_TYPE::READ_ONLY;
-		SDFSamples.BUFFER_ID = SDFsamples_id;
+		SDFSamples.BUFFER_ID = SDFSAMPLES_ID;
 		cs_type->GLOBALBUFFERs.push_back(SDFSamples);
 
 		GFX_API::GlobalBuffer_Access MCResults;
 		MCResults.ACCESS_TYPE = GFX_API::OPERATION_TYPE::READ_AND_WRITE;
-		MCResults.BUFFER_ID = MCResults_id;
+		MCResults.BUFFER_ID = MCRESULTS_ID;
 		cs_type->GLOBALBUFFERs.push_back(MCResults);
 	}
 	//Set Uniforms
@@ -76,7 +77,7 @@ MC_ComputePass::MC_ComputePass() {
 		GFX_API::Material_Uniform& uni = cs_ins->UNIFORM_LIST[i];
 		if (uni.VARIABLE_NAME == "SamplingD" && uni.VARIABLE_TYPE == GFX_API::DATA_TYPE::VAR_FLOAT32) { uni.DATA = &samplingD;}
 		if (uni.VARIABLE_NAME == "BOUNDINGMIN" && uni.VARIABLE_TYPE == GFX_API::DATA_TYPE::VAR_VEC3) { uni.DATA = &boundingMIN; }
-		if (uni.VARIABLE_NAME == "BOUNDINGMAX" && uni.VARIABLE_TYPE == GFX_API::DATA_TYPE::VAR_VEC3) { uni.DATA == &boundingMAX; }
+		if (uni.VARIABLE_NAME == "BOUNDINGMAX" && uni.VARIABLE_TYPE == GFX_API::DATA_TYPE::VAR_VEC3) { uni.DATA = &boundingMAX; }
 	}
 	//Resource Compilation
 	{
@@ -90,19 +91,22 @@ MC_ComputePass::MC_ComputePass() {
 	}
 }
 void MC_ComputePass::Execute() {
+	if (!should_execute) { return; }
 	//SDFSamples Upload
 	GFXContentManager->Upload_GlobalBuffer(SDFSAMPLES_ID);
 	GFXRENDERER->Compute_Dispatch(ComputeShaders[0], vec3(SDFinputs_res / 8, SDFinputs_res / 8, 1));
 	const void* dataloc = GFXContentManager->StartReading_GlobalBuffer(MCRESULTS_ID, GFX_API::OPERATION_TYPE::READ_ONLY);
 	memcpy(results, dataloc, 79 * 79 * 79 * 15 * 12);
 	GFXContentManager->FinishReading_GlobalBuffer(MCRESULTS_ID);
-	
+	should_execute = false;
 }
 void MC_ComputePass::RunMC(std::vector<float> SDFSamples, dvec3 BOUNDINGMIN, dvec3 BOUNDINGMAX, float SAMPLINGD, unsigned int SDFRes, vec3* result) {
+	if (should_execute) { LOG_CRASHING("You shouldn't call RunMC more than once in a frame!"); return; }
 	memcpy(SDFinputs, SDFSamples.data(), SDFRes * SDFRes * SDFRes * sizeof(float));
 	boundingMIN = BOUNDINGMIN;
 	boundingMAX = BOUNDINGMAX;
 	samplingD = SAMPLINGD;
 	SDFinputs_res = SDFRes;
 	results = result;
+	should_execute = true;
 }

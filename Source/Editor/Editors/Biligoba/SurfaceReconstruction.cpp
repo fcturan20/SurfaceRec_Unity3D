@@ -3,6 +3,9 @@
 #include "TuranAPI/ThreadedJobCore.h"
 #include "TuranAPI/Profiler_Core.h"
 #include "Editor/RenderContext/Compute Passes/MC.h"
+#include "Editor/Editor.h"
+#include "GFX/GFX_Core.h"
+#include "Editor/RenderContext/Compute Passes/MC.h"
 
 string IMPORTNAME = "";
 PCViewer::TriangleModel* lastgeneratedmodel = nullptr;
@@ -27,6 +30,9 @@ static unsigned int SDFRes = 0, selectedNormalListIndex = 0;
 static float SamplingD = 0.0;
 static dvec3 BOUNDINGMIN, BOUNDINGMAX, SAMPLE_DIST;
 static PointCloud* CLOUD = nullptr;
+
+//GPU MC
+static vec3* results = new vec3[79 * 79 * 79 * 15];
 
 inline vec3 FindSampleLoc_fromSampleIndex(unsigned int SamplePointIndex){
 		unsigned int SampleIndex_Z = SamplePointIndex / (SDFRes * SDFRes);
@@ -302,7 +308,35 @@ void SurfaceRec() {
 				Viewer->DisplayableDatas.push_back(trimodel);
 			}
 			else if(rec_method == ReconstructionMethod::MULTITHREADEDSDF_GPUMC){
+				SDFValues.clear();
+				SDFValues.resize(SDFRes * SDFRes * SDFRes, FLT_MAX);
+				MC_Results.resize(mc_jobcount);
+				CLOUD = &pc_dd->PC;
+
+				dvec3 CUBESIZE = pc_dd->BOUNDINGMAX - pc_dd->BOUNDINGMIN;
+				BOUNDINGMAX = pc_dd->BOUNDINGMAX + (CUBESIZE / 20.0);
+				BOUNDINGMIN = pc_dd->BOUNDINGMIN - (CUBESIZE / 20.0);
+				CUBESIZE *= 1.1;
+				SAMPLE_DIST = CUBESIZE / dvec3(SDFRes - uvec3(1));
+				sdf_elementcount_perjob = (SDFRes * SDFRes * SDFRes) / sdf_jobcount;
+				sdf_lastjob_elementcount = sdf_elementcount_perjob + ((SDFRes * SDFRes * SDFRes) % sdf_jobcount);
+				mc_elementcount_perjob = ((SDFRes - 1) * (SDFRes - 1) * (SDFRes - 1)) / mc_jobcount;
+				mc_lastjob_elementcount = mc_elementcount_perjob + (((SDFRes - 1) * (SDFRes - 1) * (SDFRes - 1)) % mc_jobcount);
+
+				{
+					TURAN_PROFILE_SCOPE("SDF");
+					for (unsigned int i = 0; i < sdf_jobcount; i++) {
+						tapi_Execute_withoutWait(threading_system, MultiThreaded_SDFSampling);
+					}
+					tapi_waitForAllOtherJobs(threading_system);
+					if (finished_jobindex.load() != sdf_jobcount) {
+						LOG_CRASHING("SDF Sync failed!");
+					}
+					processing_jobindex.store(0); finished_jobindex.store(0);
+				}
+
 				
+				((MC_ComputePass*)Viewer->RG->Get_RenderNodes()[1])->RunMC(SDFValues, BOUNDINGMIN, BOUNDINGMAX, SamplingD, SDFRes, results);
 			}
 		}
 		if (ShowSDFVolume && samplepoint_renderer) {
