@@ -102,7 +102,7 @@ void MC_ComputePass::Execute() {
 }
 void MC_ComputePass::RunMC(std::vector<float> SDFSamples, dvec3 BOUNDINGMIN, dvec3 BOUNDINGMAX, float SAMPLINGD, unsigned int SDFRes, vec3* result) {
 	if (should_execute) { LOG_CRASHING("You shouldn't call RunMC more than once in a frame!"); return; }
-	memcpy(SDFinputs, SDFSamples.data(), SDFRes * SDFRes * SDFRes * sizeof(float));
+	memcpy(SDFinputs, SDFSamples.data(), SDFSamples.size() * sizeof(float));
 	boundingMIN = BOUNDINGMIN;
 	boundingMAX = BOUNDINGMAX;
 	samplingD = SAMPLINGD;

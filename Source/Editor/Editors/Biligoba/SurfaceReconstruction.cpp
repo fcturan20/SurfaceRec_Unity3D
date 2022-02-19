@@ -6,6 +6,7 @@
 #include "Editor/Editor.h"
 #include "GFX/GFX_Core.h"
 #include "Editor/RenderContext/Compute Passes/MC.h"
+#include <mutex>
 
 string IMPORTNAME = "";
 PCViewer::TriangleModel* lastgeneratedmodel = nullptr;
@@ -24,12 +25,13 @@ const vector<const char*> method_names = {"Single Threaded CPU", "Multithreaded 
 //Multi-threading
 static std::atomic_uint processing_jobindex = 0, finished_jobindex = 0;
 static unsigned int sdf_jobcount = 24, mc_jobcount = 24, sdf_elementcount_perjob, mc_elementcount_perjob, sdf_lastjob_elementcount, mc_lastjob_elementcount;
-static vector<float> SDFValues;
+static vector<float> SDFValues; static std::vector<unsigned int> SDF_nearestpointindexes;
 static vector<vector<vec3>> MC_Results;
 static unsigned int SDFRes = 0, selectedNormalListIndex = 0;
 static float SamplingD = 0.0;
 static dvec3 BOUNDINGMIN, BOUNDINGMAX, SAMPLE_DIST;
 static PointCloud* CLOUD = nullptr;
+static std::mutex* SDF_lockers = nullptr;
 
 //GPU MC
 static vec3* results = new vec3[79 * 79 * 79 * 15];
@@ -65,6 +67,59 @@ void MultiThreaded_SDFSampling(){
 		}
 		else {
 			SDFValues[SamplePointIndex] = dist_fromsurface;
+		}
+	}
+
+	finished_jobindex.fetch_add(1);
+}
+
+void MultiThreaded_SDFSamplingNew() {
+	unsigned int jobindex = processing_jobindex.fetch_add(1);
+	const float sample_dist_length = length(SAMPLE_DIST);
+	const float maxsampledist = length(SAMPLE_DIST) * SamplingD / 2;
+	const unsigned char samplefiltercount = (maxsampledist / length(SAMPLE_DIST)) + 1;
+	const bool is_lastjob = (jobindex == sdf_jobcount - 1) ? true : false;
+	const unsigned int thread_jobcount = (is_lastjob) ? (sdf_lastjob_elementcount) : (sdf_elementcount_perjob);
+	for (unsigned int i = 0; i < thread_jobcount; i++) {
+		unsigned int mainPointIndex = (jobindex * sdf_elementcount_perjob) + i;
+		glm::vec3 main_pos = CLOUD->PointPositions[mainPointIndex];
+		glm::dvec3 pos_relativetoBB = glm::dvec3(main_pos) - BOUNDINGMIN;
+		
+		glm::dvec3 pos_box_frac = pos_relativetoBB / SAMPLE_DIST, pos_box_intpart;
+		glm::uvec3 pos_box_indexes;
+		pos_box_frac.x = modf(pos_box_frac.x, &pos_box_intpart.x); 
+		pos_box_frac.y = modf(pos_box_frac.y, &pos_box_intpart.y); 
+		pos_box_frac.z = modf(pos_box_frac.z, &pos_box_intpart.z);
+		pos_box_indexes = pos_box_intpart;
+
+		for (unsigned char filter_i = 0; filter_i < (samplefiltercount + 2) * (samplefiltercount + 2) * (samplefiltercount + 2); filter_i++) {
+			glm::uvec3 current_sample_index;
+			current_sample_index.z = filter_i / ((samplefiltercount + 2) * (samplefiltercount + 2));
+			current_sample_index.y = (filter_i - (current_sample_index.z * (samplefiltercount + 2) * (samplefiltercount + 2))) / (samplefiltercount + 2);
+			current_sample_index.x = filter_i - (current_sample_index.z * (samplefiltercount + 2) * (samplefiltercount + 2)) - (current_sample_index.y * (samplefiltercount + 2));
+
+			if (pos_box_indexes.x + current_sample_index.x - samplefiltercount < 0 || pos_box_indexes.x + current_sample_index.x - samplefiltercount >= SDFRes) { continue; }
+			if (pos_box_indexes.y + current_sample_index.y - samplefiltercount < 0 || pos_box_indexes.y + current_sample_index.y - samplefiltercount >= SDFRes) { continue; }
+			if (pos_box_indexes.z + current_sample_index.z - samplefiltercount < 0 || pos_box_indexes.z + current_sample_index.z - samplefiltercount >= SDFRes) { continue; }
+			current_sample_index = pos_box_indexes + current_sample_index - glm::uvec3(samplefiltercount);
+			unsigned int current_sample_index_vector = (current_sample_index.z * SDFRes * SDFRes) + (current_sample_index.y * SDFRes) + current_sample_index.x;
+
+			glm::vec3 sampleloc = vec3(BOUNDINGMIN.x + (current_sample_index.x * SAMPLE_DIST.x),
+				BOUNDINGMIN.y + (current_sample_index.y * SAMPLE_DIST.y),
+				BOUNDINGMIN.z + (current_sample_index.z * SAMPLE_DIST.z));
+
+			vec3 Sample_toPCPoint = sampleloc - main_pos;
+			float dist_fromsurface = length(Sample_toPCPoint) * dot(normalize(Sample_toPCPoint), CLOUD->PointNormals[selectedNormalListIndex].Normals[mainPointIndex]);
+
+			if (length(Sample_toPCPoint) > maxsampledist) { continue; }
+			else {
+				SDF_lockers[current_sample_index_vector].lock();
+				if (abs(dist_fromsurface) < SDFValues[current_sample_index_vector]) {
+					SDFValues[current_sample_index_vector] = dist_fromsurface;
+					SDF_nearestpointindexes[current_sample_index_vector] = mainPointIndex;
+				}
+				SDF_lockers[current_sample_index_vector].unlock();
+			}
 		}
 	}
 
@@ -150,7 +205,7 @@ void MultiThreaded_MC(){
 
 
 void SurfaceRec() {
-	IMGUI->Input_Text("Reconstructed Model Name", &IMPORTNAME); 
+	IMGUI->Input_Text("Reconstructed Model Name", &IMPORTNAME);
 
 	static unsigned int selectedlistitemindex = 0, selectedddindex = 0;
 	Viewer->SelectListOneLine_FromDisplayableDatas(PCViewer::DisplayableData::POINTCLOUD, selectedlistitemindex, selectedddindex, "Point Cloud");
@@ -158,7 +213,7 @@ void SurfaceRec() {
 		PCViewer::PointCloud_DD* pc_dd = static_cast<PCViewer::PointCloud_DD*>(Viewer->DisplayableDatas[selectedddindex]);
 
 		static int SDFResNaive = 10, SDFResMultiplier = 1, kNNCount = 2;
-		static bool ShowSDFVolume = false;
+		static bool NewMultithreadedSDF = false;
 
 		if (pc_dd->PC.PointNormals.size()) {
 			vector<const char*> NORMALLIST_names(pc_dd->PC.PointNormals.size());
@@ -172,14 +227,17 @@ void SurfaceRec() {
 			selectedNormalListIndex = UINT32_MAX;
 			IMGUI->Text("Point cloud should have normals to calculate H.Hoppe reconstruction");
 		}
-
+		
+		
 		static TuranEditor::POINTRENDERER* samplepoint_renderer = nullptr;
 		IMGUI->Slider_Int("SDF Resolution", &SDFResNaive, 2, 50);
 		IMGUI->Slider_Int("SDF Resolution Multiplier", &SDFResMultiplier, 1, 100);
 		IMGUI->Slider_Float("SamplingD", &SamplingD, 1.0 / float(SDFRes), SDFResNaive);
 		SDFRes = SDFResNaive * SDFResMultiplier;
-		IMGUI->Checkbox("Show SDF Volume", &ShowSDFVolume);
 		IMGUI->Same_Line();
+		if (rec_method == ReconstructionMethod::MULTIHREADEDCPU || rec_method == ReconstructionMethod::MULTITHREADEDSDF_GPUMC) {
+			IMGUI->Checkbox("New SDF Technique", &NewMultithreadedSDF);
+		}
 		if(IMGUI->SelectList_OneLine("Method", &selected_methodi, method_names)){
 			if(selected_methodi == 0){rec_method = ReconstructionMethod::SINGLETHREADEDCPU;}
 			if(selected_methodi == 1){rec_method = ReconstructionMethod::MULTIHREADEDCPU;}
@@ -202,15 +260,29 @@ void SurfaceRec() {
 				BOUNDINGMIN = pc_dd->BOUNDINGMIN - (CUBESIZE / 20.0);
 				CUBESIZE *= 1.1;
 				SAMPLE_DIST = CUBESIZE / dvec3(SDFRes - uvec3(1));
-				sdf_elementcount_perjob = (SDFRes * SDFRes * SDFRes) / sdf_jobcount;
-				sdf_lastjob_elementcount = sdf_elementcount_perjob + ((SDFRes * SDFRes * SDFRes) % sdf_jobcount);
+
+
+				void(*multithreaded_sdf_funcptr)() = (NewMultithreadedSDF) ? (MultiThreaded_SDFSamplingNew) : (MultiThreaded_SDFSampling);
+				if (NewMultithreadedSDF) {
+					sdf_elementcount_perjob = CLOUD->PointCount / sdf_jobcount;
+					sdf_lastjob_elementcount = sdf_elementcount_perjob + ((CLOUD->PointCount) % sdf_jobcount);
+					SDF_nearestpointindexes.resize(SDFRes * SDFRes * SDFRes, UINT32_MAX);
+					if(SDF_lockers){ delete[] SDF_lockers; }
+					SDF_lockers = new std::mutex[SDFRes * SDFRes * SDFRes];
+				}
+				else {
+					sdf_elementcount_perjob = (SDFRes * SDFRes * SDFRes) / sdf_jobcount;
+					sdf_lastjob_elementcount = sdf_elementcount_perjob + ((SDFRes * SDFRes * SDFRes) % sdf_jobcount);
+				}
+
+				//Marching Cubes is same for both SDFs
 				mc_elementcount_perjob = ((SDFRes - 1) * (SDFRes - 1) * (SDFRes - 1)) / mc_jobcount;
 				mc_lastjob_elementcount = mc_elementcount_perjob + (((SDFRes - 1) * (SDFRes - 1) * (SDFRes - 1)) % mc_jobcount);
 				
 				{
 					TURAN_PROFILE_SCOPE("SDF");
 					for(unsigned int i = 0; i < sdf_jobcount; i++){
-						tapi_Execute_withoutWait(threading_system, MultiThreaded_SDFSampling);
+						tapi_Execute_withoutWait(threading_system, multithreaded_sdf_funcptr);
 					}
 					tapi_waitForAllOtherJobs(threading_system);
 					if(finished_jobindex.load() != sdf_jobcount){
@@ -338,10 +410,10 @@ void SurfaceRec() {
 				
 				((MC_ComputePass*)Viewer->RG->Get_RenderNodes()[1])->RunMC(SDFValues, BOUNDINGMIN, BOUNDINGMAX, SamplingD, SDFRes, results);
 			}
-		}
+		}/*
 		if (ShowSDFVolume && samplepoint_renderer) {
 			samplepoint_renderer->RenderThisFrame();
-		}
+		}*/
 	}
 }
 
