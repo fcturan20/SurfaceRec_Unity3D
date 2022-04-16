@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(Geometry-Processing VERSION 0.1.0)
+project(RecDLL VERSION 0.1.0)
 
 #Use VCPKG and force x64
 set(CMAKE_TOOLCHAIN_FILE "D:/dev/Extras/vcpkg/scripts/buildsystems/vcpkg.cmake")
